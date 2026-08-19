@@ -3,16 +3,26 @@
 import { CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DocumentCard } from "@/components/dashboard/document-card";
-import { getShopCountByStatus, getDocumentCounts, type ShopStatusFilter } from "@/lib/dashboard/dashboard-helper";
+import {
+  getShopCountByStatus,
+  type DocumentCounts,
+  type ShopStatusFilter,
+} from "@/lib/dashboard/dashboard-helper";
 import type { DocDetails } from "@/types/shop";
 
 /** Ported from DashboardStatisticsGrid in dashboard_statistics_grid.dart. */
 export function StatisticsGrid({
   shops,
+  documentCounts,
+  isDocumentCountsLoading,
+  documentCountsError,
   selectedFilter,
   onFilterTap,
 }: {
   shops: DocDetails[];
+  documentCounts: DocumentCounts;
+  isDocumentCountsLoading: boolean;
+  documentCountsError: Error | null;
   selectedFilter: ShopStatusFilter;
   onFilterTap: (filter: ShopStatusFilter) => void;
 }) {
@@ -23,8 +33,6 @@ export function StatisticsGrid({
       <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">ไม่มีข้อมูลร้าน</div>
     );
   }
-
-  const documentCounts = getDocumentCounts(shops);
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -58,7 +66,11 @@ export function StatisticsGrid({
         isSelected={selectedFilter === "exceeded"}
         onClick={() => onFilterTap(selectedFilter === "exceeded" ? "all" : "exceeded")}
       />
-      <DocumentCard counts={documentCounts} />
+      <DocumentCard
+        counts={documentCounts}
+        isLoading={isDocumentCountsLoading}
+        error={documentCountsError}
+      />
     </div>
   );
 }

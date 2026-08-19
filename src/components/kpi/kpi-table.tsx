@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight, Inbox, ImageUp, User, Users } from "lucide-r
 import { UserAvatar } from "@/components/common/user-avatar";
 import { Pagination } from "@/components/common/pagination";
 import { KpiColors, KpiDimensions } from "@/lib/kpi/kpi-constants";
-import { getDisplayName } from "@/lib/employee/employee-mapping-service";
+import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
 import type { KpiCombinedEmployee, KpiCombinedShopStat, KpiCombinedTaskItem } from "@/types/kpi-combined";
 
 const NUMERIC_COL_MIN_WIDTH = 72;
@@ -28,7 +28,7 @@ function numCell(value: number, bg?: string) {
   const isZero = value === 0;
   return (
     <div
-      className="flex h-full items-center justify-center border-l border-white/45 text-[12px] font-semibold tabular-nums"
+      className="flex h-full items-center justify-center border-l border-slate-100 text-[12px] font-semibold tabular-nums"
       style={{ backgroundColor: bg, color: isZero ? KpiColors.zeroValue : KpiColors.primaryText }}
     >
       {isZero ? "—" : value.toLocaleString("th-TH")}
@@ -38,7 +38,7 @@ function numCell(value: number, bg?: string) {
 
 function dashCell(bg?: string) {
   return (
-    <div className="flex h-full items-center justify-center border-l border-white/45 text-[12px] tabular-nums" style={{ backgroundColor: bg, color: KpiColors.zeroValue }}>
+    <div className="flex h-full items-center justify-center border-l border-slate-100 text-[12px] tabular-nums" style={{ backgroundColor: bg, color: KpiColors.zeroValue }}>
       —
     </div>
   );
@@ -62,20 +62,20 @@ function numericColumns(stats: {
 }) {
   return (
     <>
-      {numCell(stats.waitingVerify, KpiColors.section2Background)}
-      {numCell(stats.passed, KpiColors.section2Background)}
-      {numCell(stats.cancelled, KpiColors.section2Background)}
-      {numCell(stats.notRecorded, KpiColors.section2Background)}
-      {numCell(stats.notRequiredApproval, KpiColors.section2Background)}
-      {numCell(stats.requiredToRecord, KpiColors.section3Background)}
-      {numCell(stats.recorded, KpiColors.section3Background)}
-      {numCell(stats.remaining, KpiColors.section3Background)}
-      {numCell(stats.completed, KpiColors.section3Background)}
-      {numCell(stats.journalCount, KpiColors.journalGroupBackground)}
-      {numCell(stats.journalCountNoPhoto, KpiColors.journalGroupBackground)}
-      {numCell(stats.journalCount + stats.journalCountNoPhoto, KpiColors.journalGroupBackground)}
-      {numCell(stats.journalChecked, KpiColors.journalGroupBackground)}
-      {numCell(stats.journalUpdated, KpiColors.journalGroupBackground)}
+      {numCell(stats.waitingVerify)}
+      {numCell(stats.passed)}
+      {numCell(stats.cancelled)}
+      {numCell(stats.notRecorded)}
+      {numCell(stats.notRequiredApproval)}
+      {numCell(stats.requiredToRecord)}
+      {numCell(stats.recorded)}
+      {numCell(stats.remaining)}
+      {numCell(stats.completed)}
+      {numCell(stats.journalCount)}
+      {numCell(stats.journalCountNoPhoto)}
+      {numCell(stats.journalCount + stats.journalCountNoPhoto)}
+      {numCell(stats.journalChecked)}
+      {numCell(stats.journalUpdated)}
     </>
   );
 }
@@ -92,10 +92,10 @@ function journalStatsForTask(task: KpiCombinedTaskItem) {
 
 const GROUP_HEADERS = [
   { label: "", span: 1, color: "transparent" },
-  { label: "", span: 1, color: KpiColors.section1Background },
-  { label: "สถานะการตรวจสอบ", span: 5, color: KpiColors.section2Background },
-  { label: "สถานะการบันทึกบัญชี", span: 4, color: KpiColors.section3Background },
-  { label: "บันทึกบัญชี (GL)", span: 5, color: KpiColors.journalGroupBackground },
+  { label: "", span: 1, color: "#F8FAFC" },
+  { label: "สถานะการตรวจสอบ", span: 5, color: "#F8FAFC" },
+  { label: "สถานะการบันทึกบัญชี", span: 4, color: "#F8FAFC" },
+  { label: "บันทึกบัญชี (GL)", span: 5, color: "#F8FAFC" },
   { label: "", span: 1, color: "transparent" },
 ];
 
@@ -128,6 +128,7 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
 
 /** Ported from KpiCombinedPage's DataTable2 + 3-level expand/collapse drill-down. */
 export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmployee[]; fontScale: number }) {
+  useEmployeeMappings();
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
   const [expandedShops, setExpandedShops] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -187,39 +188,38 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
   const pageEmployees = employees.slice((effectivePage - 1) * rowsPerPage, effectivePage * rowsPerPage);
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-3 border-b border-[#F1F5F9] px-5 py-3.5">
-        <h2 className="text-[15px] font-bold text-slate-800">รายชื่อพนักงาน</h2>
-        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-4">
+        <div>
+          <h2 className="text-[15px] font-semibold text-slate-900">รายชื่อพนักงาน</h2>
+          <p className="mt-0.5 text-[11px] text-slate-500">คลิกที่รายชื่อเพื่อดูรายละเอียดร้านและงาน</p>
+        </div>
+        <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
           ทั้งหมด {employees.length.toLocaleString("th-TH")} คน
         </span>
-        <div className="ml-auto flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: KpiColors.section1Background }} />บิลที่รับผิดชอบ</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: KpiColors.journalGroupBackground }} />บันทึกบัญชี</span>
-        </div>
       </div>
       <div className="overflow-x-auto" style={{ fontSize: fs(12) }}>
         <div className="w-full" style={{ minWidth: GRID_MIN_WIDTH }}>
         {/* Group banner row */}
-        <div className="grid overflow-hidden rounded-t-xl" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+        <div className="grid border-b border-slate-200" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
           {GROUP_HEADERS.map((g, i) => (
             <div
               key={i}
               style={{ gridColumn: `span ${g.span}`, backgroundColor: g.color, fontSize: fs(10) }}
-              className="flex h-5 items-center justify-center font-bold text-[#374151]"
+              className="flex h-6 items-center justify-center font-semibold uppercase tracking-wide text-slate-500"
             >
               {g.label}
             </div>
           ))}
         </div>
         {/* Column label row */}
-        <div className="grid border-b border-[#E2E8F0] bg-[#F8FAFC]" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+        <div className="grid border-b border-slate-200 bg-slate-50" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
           {COLUMN_LABELS.map((label, i) => (
             <div
               key={i}
               title={COLUMN_TOOLTIPS[label]}
               style={{ fontSize: fs(11) }}
-              className={`flex h-9 items-center border-l border-white/60 px-2 font-bold text-[#374151] ${i === 0 ? "justify-start border-l-0" : "justify-center text-center"}`}
+              className={`flex h-10 items-center border-l border-slate-200 px-2 font-semibold text-slate-600 ${i === 0 ? "justify-start border-l-0" : "justify-center text-center"}`}
             >
               {label}
             </div>
@@ -230,16 +230,16 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
           const displayName = getDisplayName(emp.name);
           const isExpanded = expandedEmployees.has(emp.name);
           return (
-            <div key={emp.name} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : KpiColors.alternateRow }}>
+            <div key={emp.name} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}>
               <div
-                className="grid cursor-pointer border-b border-[#F1F5F9] hover:bg-[#F8FAFC]"
+                className="group grid cursor-pointer border-b border-slate-100 transition-colors hover:bg-indigo-50/40"
                 style={{ gridTemplateColumns: GRID_TEMPLATE, minHeight: 64 }}
                 onClick={() => toggleEmployee(emp.name)}
               >
-                <div className="flex items-center gap-3 px-3 py-2">
+                <div className="flex items-center gap-3 border-l-2 border-l-transparent px-3 py-2 transition-colors group-hover:border-l-indigo-500">
                   <UserAvatar name={displayName} size={KpiDimensions.avatarRadius * 2} />
                   <div className="min-w-0">
-                    <p className="truncate font-semibold" style={{ fontSize: fs(12) }}>
+                    <p className="truncate font-semibold text-slate-800" style={{ fontSize: fs(12) }}>
                       {displayName}
                     </p>
                     {displayName !== emp.name && <p className="truncate text-[10px] text-slate-500">{emp.name}</p>}
@@ -249,7 +249,7 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
                     </p>
                   </div>
                 </div>
-                {numCell(emp.totalDocuments, KpiColors.section1Background)}
+                {numCell(emp.totalDocuments)}
                 {numericColumns({
                   waitingVerify: emp.waitingVerify,
                   passed: emp.passedDocuments,
@@ -265,7 +265,7 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
                   journalChecked: emp.totalChecked,
                   journalUpdated: emp.totalUpdated,
                 })}
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center text-slate-400 group-hover:text-indigo-600">
                   {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </div>
               </div>
@@ -324,26 +324,26 @@ function ShopRow({
   const expandable = shop.tasks.length > 0 || shop.orphanJournalEntries.length > 0;
 
   return (
-    <div className="border-b border-[#E2E8F0]">
+    <div className="border-b border-slate-200">
       <div
-        className={`grid border-b border-[#F1F5F9] bg-[#FAFAFA] ${expandable ? "cursor-pointer hover:bg-[#F1F5F9]" : ""}`}
+        className={`grid border-b border-slate-100 bg-slate-50/80 ${expandable ? "cursor-pointer transition-colors hover:bg-slate-100" : ""}`}
         style={{ gridTemplateColumns: GRID_TEMPLATE, minHeight: 44 }}
         onClick={() => expandable && onToggleShop(shopKey)}
       >
         <div className="flex min-w-0 items-center gap-2 px-3 py-1.5">
-          <span className="shrink-0 rounded-md border border-[#CBD5E1] bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#475569]">
+          <span className="shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
             ร้าน
           </span>
-          <span className="truncate font-medium text-[#374151]" style={{ fontSize: fs(11.5) }}>
+          <span className="truncate font-medium text-slate-700" style={{ fontSize: fs(11.5) }}>
             {shop.shopName}
           </span>
           {shop.journalRequiredDocs > 0 && (
-            <span className="rounded-full bg-[#E0E7FF] px-1.5 py-0.5 text-[9px] font-semibold text-[#4338CA]">
+            <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700">
               ต้องบันทึก {shop.journalRequiredDocs}
             </span>
           )}
         </div>
-        {numCell(shop.totalDocuments, KpiColors.section1Background)}
+        {numCell(shop.totalDocuments)}
         {numericColumns({
           waitingVerify: shop.waitingVerify,
           passed: shop.passed,
@@ -365,7 +365,7 @@ function ShopRow({
       </div>
 
       {isExpanded && (
-        <div className="bg-white/60">
+        <div className="border-l-2 border-l-indigo-100 bg-white">
           {shop.tasks.map((task, i) => (
             <TaskRow
               key={`${shopKey}#${i}`}
@@ -409,7 +409,7 @@ function TaskRow({
   return (
     <div>
       <div
-        className={`grid border-b border-[#F1F5F9] bg-white ${expandable ? "cursor-pointer hover:bg-[#F8FAFC]" : ""}`}
+        className={`grid border-b border-slate-100 bg-white ${expandable ? "cursor-pointer transition-colors hover:bg-indigo-50/30" : ""}`}
         style={{ gridTemplateColumns: GRID_TEMPLATE, minHeight: 38 }}
         onClick={() => expandable && onToggle(taskKey)}
       >
@@ -419,7 +419,7 @@ function TaskRow({
           </span>
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="shrink-0 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-1.5 py-0.5 text-[9px] font-bold text-[#64748B]">
+              <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
                 งาน
               </span>
               <span className="truncate font-medium" style={{ fontSize: fs(11.5) }}>
@@ -448,7 +448,7 @@ function TaskRow({
             </div>
           </div>
         </div>
-        {numCell(task.totalDocument, KpiColors.section1Background)}
+        {numCell(task.totalDocument)}
         {numericColumns({
           waitingVerify: task.waitingVerify,
           passed: task.passed,
@@ -482,9 +482,9 @@ function TaskRow({
 
 function JournalDetailPanel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="border-b border-[#E2E8F0] bg-[#F8FAFC]/75 px-3 py-2">
+    <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-[#64748B]">{title}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
       </div>
       <div className="space-y-1.5">{children}</div>
     </div>
@@ -505,7 +505,7 @@ function Chip({ icon: Icon, label, color }: { icon?: typeof User; label: string;
 
 function JournalEntryCard({ journal, fs }: { journal: KpiCombinedTaskItem["journalEntries"][number]; fs: (n: number) => string }) {
   return (
-    <div className="rounded-lg border border-[#F1F5F9] bg-white px-3 py-1.5">
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
       <p className="font-medium" style={{ fontSize: fs(11) }}>
         {journal.docNo} <span className="text-muted-foreground">· {journal.accountName}</span>
       </p>
@@ -527,7 +527,7 @@ function OrphanJournalCard({ journal, fs }: { journal: KpiCombinedTaskItem["jour
       ? "มีเอกสารอ้างอิงแล้ว แต่ยังไม่พบงานที่ตรงกัน"
       : "เชื่อมกับงานแล้ว";
   return (
-    <div className="rounded-lg border border-dashed border-[#F1F5F9] bg-[#FFFBEB] px-3 py-1.5">
+    <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-3 py-2">
       <p className="font-medium" style={{ fontSize: fs(11) }}>
         {journal.docNo} <span className="text-muted-foreground">· {journal.accountName}</span>
       </p>

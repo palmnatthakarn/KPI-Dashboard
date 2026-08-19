@@ -27,6 +27,8 @@ export interface ShopFetchResult {
   taskUploaderCounts: Map<string, Map<string, number>>;
   /** Shop-wide billcount total from /documentimagegroup, feeds journalRequiredDocs. */
   billCount: number;
+  /** Active documents in the selected import-date range, including documents without a task. */
+  activeDocumentCount: number;
   /** false if task fetch failed or GL journal pagination didn't complete — excluded from caching. */
   complete: boolean;
 }
@@ -150,6 +152,23 @@ export function reconcileKpiEmployees(
     }
   }
 
+  // `/documentimagegroup` may return task GUIDs with different casing or
+  // surrounding whitespace than `/task`. Normalize and merge the uploader
+  // map before looking it up, matching monitor's
+  // normalizedTaskUploaderCounts behavior.
+  const normalizedTaskUploaderCounts = new Map<string, Map<string, number>>();
+  for (const shop of shopResults) {
+    for (const [taskGuid, uploaders] of shop.taskUploaderCounts) {
+      const guid = norm(taskGuid);
+      if (!guid) continue;
+      const merged = normalizedTaskUploaderCounts.get(guid) ?? new Map<string, number>();
+      normalizedTaskUploaderCounts.set(guid, merged);
+      for (const [uploader, count] of uploaders) {
+        merged.set(uploader, (merged.get(uploader) ?? 0) + count);
+      }
+    }
+  }
+
   // employeeName -> shopName -> ShopAcc
   const byEmployeeShop = new Map<string, Map<string, ShopAcc>>();
   // employeeName -> shopName -> journalRequiredDocs (broadcast per shop)
@@ -240,7 +259,7 @@ export function reconcileKpiEmployees(
       // Uploader counts across all linked task guids for this task.
       const uploaderMap = new Map<string, number>();
       for (const guid of linkedGuids) {
-        const uploaders = taskUploaderCounts.get(guid);
+        const uploaders = normalizedTaskUploaderCounts.get(guid);
         if (!uploaders) continue;
         for (const [name, count] of uploaders) {
           uploaderMap.set(name, (uploaderMap.get(name) ?? 0) + count);

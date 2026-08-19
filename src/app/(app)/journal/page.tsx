@@ -50,7 +50,7 @@ function JournalPageContent() {
   const [sortColumnIndex, setSortColumnIndex] = useState<number | null>(null);
   const [sortAscending, setSortAscending] = useState(true);
   const [isChartView, setIsChartView] = useState(false);
-  const [toast, setToast] = useState<{ message: string; variant: "loading" | "success" } | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: "loading" | "success" | "error" } | null>(null);
 
   const filtered = useMemo(() => {
     const dateRange = getDateRange(dateFilter, customRange);
@@ -93,8 +93,36 @@ function JournalPageContent() {
     setSortAscending(true);
   }
 
-  function handleExport(type: "Excel" | "PDF" | "CSV") {
+  async function handleExport(type: "Excel" | "PDF" | "CSV") {
     setToast({ message: `กำลังดาวน์โหลดรายงาน ${type}...`, variant: "loading" });
+    if (type === "PDF") {
+      try {
+        const { exportTablePdf } = await import("@/lib/reports/table-pdf-export");
+        await exportTablePdf({
+          title: `Journal - ${branchSync}`,
+          subtitle: `จำนวน ${filtered.length.toLocaleString("th-TH")} รายการ`,
+          filename: `journal_${branchSync}`,
+          table: {
+            headers: ["วันที่", "เลขที่เอกสาร", "ชื่อบัญชี", "ประเภท", "เดบิต", "เครดิต"],
+            rows: filtered.map((journal) => [
+              journalDateTime(journal)?.toLocaleDateString("th-TH") ?? "-",
+              journal.docno ?? "-",
+              journal.accountname ?? "-",
+              typeDisplay(journal.accounttype),
+              formatNumber(journal.debit ?? 0),
+              formatNumber(journal.credit ?? 0),
+            ]),
+            highlightRows: [],
+          },
+        });
+        setToast({ message: "ดาวน์โหลดรายงาน PDF สำเร็จ", variant: "success" });
+      } catch (exportError) {
+        console.error("Unable to export journal PDF", exportError);
+        setToast({ message: "สร้างไฟล์ PDF ไม่สำเร็จ", variant: "error" });
+      }
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
     setTimeout(() => setToast({ message: `ดาวน์โหลดรายงาน ${type} สำเร็จ`, variant: "success" }), 1500);
     setTimeout(() => setToast(null), 3500);
   }
@@ -214,7 +242,13 @@ function JournalPageContent() {
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm text-background shadow-lg">
-          {toast.variant === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          {toast.variant === "loading" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : toast.variant === "success" ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
           {toast.message}
         </div>
       )}

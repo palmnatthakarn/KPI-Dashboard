@@ -6,13 +6,14 @@ import { useKpiCombined } from "@/hooks/use-kpi-combined";
 import { KpiSummaryCards } from "@/components/kpi/kpi-summary-cards";
 import { KpiFilterBar } from "@/components/kpi/kpi-filter-bar";
 import { KpiTable } from "@/components/kpi/kpi-table";
-import { getDisplayName } from "@/lib/employee/employee-mapping-service";
+import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
 import { useAuthStore } from "@/store/auth-store";
 
 const FONT_SCALES = [1, 1.2, 1.4];
 
 /** Ported from KpiCombinedPage (kpi_combined_page.dart) — the single reachable "KPI" nav item. */
 export default function KpiPage() {
+  useEmployeeMappings();
   const {
     filters,
     applyFilters,
@@ -32,12 +33,14 @@ export default function KpiPage() {
 
   const [fontScale, setFontScale] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const username = useAuthStore((state) => state.username);
 
   const employeeItems = allEmployeeNames.map((name) => ({ id: name, label: getDisplayName(name) }));
 
   async function handleExport() {
-    if (!hasSearched || filteredEmployees.length === 0) return;
+    if (isExporting || !hasSearched || filteredEmployees.length === 0) return;
+    setIsExporting(true);
     setToast("กำลังสร้างไฟล์ PDF...");
     try {
       const { exportKpiPdf } = await import("@/lib/kpi/kpi-pdf-export");
@@ -52,6 +55,7 @@ export default function KpiPage() {
       console.error("Unable to export KPI PDF", exportError);
       setToast("สร้าง PDF ไม่สำเร็จ");
     } finally {
+      setIsExporting(false);
       setTimeout(() => setToast(null), 2500);
     }
   }
@@ -87,7 +91,7 @@ export default function KpiPage() {
         startDate={filters.startDate}
         endDate={filters.endDate}
         isSearching={isFetching}
-        canExport={hasSearched && !isLoading && !isError && filteredEmployees.length > 0}
+        canExport={!isExporting && hasSearched && !isLoading && !isError && filteredEmployees.length > 0}
         onSearch={applyFilters}
         onReset={resetFilters}
         onExport={handleExport}

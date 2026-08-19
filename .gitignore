@@ -6,6 +6,10 @@
 # testing
 /coverage
 
+# local tool caches
+/.firebase/
+/.pnpm-store/
+
 # next.js
 /.next/
 /out/

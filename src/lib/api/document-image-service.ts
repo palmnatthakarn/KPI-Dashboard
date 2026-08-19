@@ -59,6 +59,20 @@ function parseIntSafe(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function firstValue(record: Record<string, unknown>, keys: string[]): unknown {
+  for (const key of keys) {
+    const value = record[key];
+    if (value != null) return value;
+  }
+  return undefined;
+}
+
+function uploaderName(record: Record<string, unknown>): string {
+  return String(
+    firstValue(record, ["uploadedby", "uploadedBy", "uploaded_by", "createdby", "createdBy", "created_by"]) ?? ""
+  ).trim();
+}
+
 /**
  * Builds a docNo -> taskGuid map (from `references[].docno`) and a
  * taskGuid -> uploader -> imageCount map (from `imagereferences[].uploadedby`,
@@ -101,13 +115,16 @@ export async function fetchDocNoToTaskGuidMap(params: {
       totalItemsSeen += items.length;
 
       for (const item of items) {
-        const taskGuid = String(item?.taskguid ?? "").trim();
+        const taskGuid = String(
+          firstValue(item, ["taskguid", "taskGuid", "task_guid", "guidfixed", "guidFixed"]) ?? ""
+        ).trim();
         if (!taskGuid) continue;
 
-        const refsRaw = item?.references;
+        const refsRaw = firstValue(item, ["references", "reference", "documentReferences"]);
         if (Array.isArray(refsRaw)) {
           for (const r of refsRaw) {
-            const docNo = String((r as Record<string, unknown>)?.docno ?? "").trim();
+            const reference = r as Record<string, unknown>;
+            const docNo = String(firstValue(reference, ["docno", "docNo", "doc_no"]) ?? "").trim();
             if (docNo) docNoToTaskGuid.set(docNo, taskGuid);
           }
         }
@@ -115,15 +132,20 @@ export async function fetchDocNoToTaskGuidMap(params: {
         const uploaderCounts = taskUploaderCounts.get(taskGuid) ?? new Map<string, number>();
         taskUploaderCounts.set(taskGuid, uploaderCounts);
 
-        const imgRefsRaw = item?.imagereferences;
+        const imgRefsRaw = firstValue(item, [
+          "imagereferences",
+          "imageReferences",
+          "image_references",
+          "images",
+        ]);
         if (Array.isArray(imgRefsRaw) && imgRefsRaw.length > 0) {
           for (const ir of imgRefsRaw) {
-            const uploader = String((ir as Record<string, unknown>)?.uploadedby ?? "").trim();
+            const uploader = uploaderName(ir as Record<string, unknown>);
             if (!uploader) continue;
             uploaderCounts.set(uploader, (uploaderCounts.get(uploader) ?? 0) + 1);
           }
         } else {
-          const uploader = String(item?.uploadedby ?? "").trim();
+          const uploader = uploaderName(item);
           if (uploader) uploaderCounts.set(uploader, (uploaderCounts.get(uploader) ?? 0) + 1);
         }
       }
@@ -201,6 +223,46 @@ export async function fetchShopBillCount(params: {
   } catch {
     // Match Dart behavior: return whatever total was accumulated so far.
   }
+
+  return total;
+}
+
+/**
+ * Total active documents currently returned by `/documentimagegroup` for
+ * the selected date range. Unlike `fetchShopBillCount`, this intentionally
+ * does not send the `ref=1` filter, so documents not linked to a task are
+ * included while records already deleted from the endpoint are excluded.
+ */
+export async function fetchShopActiveDocumentCount(params: {
+  perPage?: number;
+  fromDate?: string;
+  toDate?: string;
+}): Promise<number> {
+  const { perPage = 9999, fromDate, toDate } = params;
+  let total = 0;
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const { data } = await apiClient.get("/documentimagegroup", {
+      params: {
+        page,
+        perPage,
+        limit: perPage,
+        ...(fromDate ? { fromdate: fromDate } : {}),
+        ...(toDate ? { todate: toDate } : {}),
+      },
+    });
+
+    if (data?.success !== true || !Array.isArray(data?.data)) break;
+    for (const item of data.data as Record<string, unknown>[]) {
+      total += parseIntSafe(item.billcount);
+    }
+
+    const pagination = data?.pagination;
+    totalPages = parseIntSafe(pagination?.totalPage ?? pagination?.total_page) || 1;
+    page++;
+  } while (page <= totalPages && page <= 500);
 
   return total;
 }

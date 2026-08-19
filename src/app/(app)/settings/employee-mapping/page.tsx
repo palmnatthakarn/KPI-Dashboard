@@ -20,10 +20,11 @@ import NextLink from "next/link";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { cn } from "@/lib/utils";
 import {
-  getAllMappings,
-  getKnownEmployees,
   removeMapping,
   saveMapping,
+  useEmployeeMappings,
+  useEmployeeMappingStatus,
+  useKnownEmployees,
 } from "@/lib/employee/employee-mapping-service";
 
 type Tab = "all" | "mapped" | "unmapped";
@@ -36,18 +37,15 @@ const tabs: Array<{ value: Tab; label: string }> = [
 
 /** Ported from EmployeeMappingPage (employee_mapping_page.dart). */
 export default function EmployeeMappingPage() {
-  const [mappings, setMappings] = useState<Record<string, string>>(() => getAllMappings());
-  const [known, setKnown] = useState<string[]>(() => getKnownEmployees());
+  const mappings = useEmployeeMappings();
+  const known = useKnownEmployees();
+  const { status: syncStatus, error: syncError } = useEmployeeMappingStatus();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
   const [isExporting, setIsExporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [dialog, setDialog] = useState<{ mode: "rename" | "delete"; username: string; displayName: string } | null>(null);
-
-  function refresh() {
-    setMappings(getAllMappings());
-    setKnown(getKnownEmployees());
-  }
 
   const mappedEntries = useMemo(() => Object.entries(mappings), [mappings]);
   const unmappedNames = useMemo(() => known.filter((name) => !(name in mappings)), [known, mappings]);
@@ -76,11 +74,20 @@ export default function EmployeeMappingPage() {
     setDialog({ mode: "delete", username, displayName: mappings[username] ?? username });
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!dialog) return;
-    removeMapping(dialog.username);
-    setDialog(null);
-    refresh();
+    setIsSaving(true);
+    try {
+      await removeMapping(dialog.username);
+      setDialog(null);
+      setToast("ลบชื่อที่ตั้งไว้แล้ว");
+    } catch (error) {
+      console.error("Unable to remove employee mapping", error);
+      setToast("ลบชื่อไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setToast(null), 2500);
+    }
   }
 
   async function handleExportPdf() {
@@ -210,7 +217,17 @@ export default function EmployeeMappingPage() {
           </span>
         </div>
 
-        {isEmpty ? (
+        {syncStatus === "loading" && isEmpty ? (
+          <div className="flex items-center justify-center gap-2 p-10 text-sm text-[#64748B]">
+            <Loader2 className="h-4 w-4 animate-spin" /> กำลังโหลดรายชื่อจาก Firebase...
+          </div>
+        ) : syncStatus === "error" && isEmpty ? (
+          <EmptyState
+            icon={UsersRound}
+            title="โหลดรายชื่อจาก Firebase ไม่สำเร็จ"
+            description={syncError ?? "กรุณาตรวจสอบการเชื่อมต่อและลองเปิดหน้านี้อีกครั้ง"}
+          />
+        ) : isEmpty ? (
           <EmptyState
             icon={UsersRound}
             title="ยังไม่มีรายชื่อพนักงาน"
@@ -249,17 +266,32 @@ export default function EmployeeMappingPage() {
         <RenameDialog
           username={dialog.username}
           initialDisplayName={dialog.displayName}
+          isSaving={isSaving}
           onCancel={() => setDialog(null)}
-          onSave={(name) => {
-            saveMapping(dialog.username, name);
-            setDialog(null);
-            refresh();
+          onSave={async (name) => {
+            setIsSaving(true);
+            try {
+              await saveMapping(dialog.username, name);
+              setDialog(null);
+              setToast("บันทึกชื่อบน Firebase แล้ว");
+            } catch (error) {
+              console.error("Unable to save employee mapping", error);
+              setToast("บันทึกชื่อไม่สำเร็จ กรุณาลองใหม่");
+            } finally {
+              setIsSaving(false);
+              setTimeout(() => setToast(null), 2500);
+            }
           }}
         />
       )}
 
       {dialog?.mode === "delete" && (
-        <DeleteDialog username={dialog.username} onCancel={() => setDialog(null)} onConfirm={handleDelete} />
+        <DeleteDialog
+          username={dialog.username}
+          isSaving={isSaving}
+          onCancel={() => setDialog(null)}
+          onConfirm={handleDelete}
+        />
       )}
 
       {toast && (
@@ -443,13 +475,15 @@ function EmptyState({ icon: Icon, title, description }: { icon: LucideIcon; titl
 function RenameDialog({
   username,
   initialDisplayName,
+  isSaving,
   onCancel,
   onSave,
 }: {
   username: string;
   initialDisplayName: string;
+  isSaving: boolean;
   onCancel: () => void;
-  onSave: (displayName: string) => void;
+  onSave: (displayName: string) => Promise<void>;
 }) {
   const [value, setValue] = useState(initialDisplayName);
 
@@ -461,7 +495,7 @@ function RenameDialog({
             <h3 className="text-base font-semibold">ตั้งชื่อแสดงผล</h3>
             <p className="mt-1 text-xs text-[#64748B]">ชื่อนี้จะถูกใช้ในหน้า KPI และรายงานที่เกี่ยวข้อง</p>
           </div>
-          <button type="button" onClick={onCancel} aria-label="ปิด" className="rounded-lg p-2 text-[#64748B] hover:bg-secondary">
+          <button type="button" onClick={onCancel} disabled={isSaving} aria-label="ปิด" className="rounded-lg p-2 text-[#64748B] hover:bg-secondary disabled:opacity-50">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -484,11 +518,11 @@ function RenameDialog({
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="rounded-lg px-4 py-2 text-sm font-semibold text-[#64748B] hover:bg-secondary">
+          <button type="button" onClick={onCancel} disabled={isSaving} className="rounded-lg px-4 py-2 text-sm font-semibold text-[#64748B] hover:bg-secondary disabled:opacity-50">
             ยกเลิก
           </button>
-          <button type="button" onClick={() => onSave(value)} className="rounded-lg bg-[#0F172A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1E293B]">
-            บันทึก
+          <button type="button" disabled={isSaving || !value.trim()} onClick={() => void onSave(value)} className="inline-flex items-center gap-2 rounded-lg bg-[#0F172A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50">
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />} บันทึก
           </button>
         </div>
       </div>
@@ -496,7 +530,7 @@ function RenameDialog({
   );
 }
 
-function DeleteDialog({ username, onCancel, onConfirm }: { username: string; onCancel: () => void; onConfirm: () => void }) {
+function DeleteDialog({ username, isSaving, onCancel, onConfirm }: { username: string; isSaving: boolean; onCancel: () => void; onConfirm: () => Promise<void> }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-5 text-[#0F172A] shadow-lg">
@@ -505,11 +539,11 @@ function DeleteDialog({ username, onCancel, onConfirm }: { username: string; onC
           ชื่อของ &quot;{username}&quot; จะกลับไปแสดงเป็น Email เดิม
         </p>
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="rounded-lg px-4 py-2 text-sm font-semibold text-[#64748B] hover:bg-secondary">
+          <button type="button" onClick={onCancel} disabled={isSaving} className="rounded-lg px-4 py-2 text-sm font-semibold text-[#64748B] hover:bg-secondary disabled:opacity-50">
             ยกเลิก
           </button>
-          <button type="button" onClick={onConfirm} className="rounded-lg bg-[#DC2626] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B91C1C]">
-            ลบ
+          <button type="button" disabled={isSaving} onClick={() => void onConfirm()} className="inline-flex items-center gap-2 rounded-lg bg-[#DC2626] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B91C1C] disabled:opacity-50">
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />} ลบ
           </button>
         </div>
       </div>

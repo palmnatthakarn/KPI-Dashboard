@@ -13,6 +13,9 @@ import { ShopTable } from "@/components/dashboard/shop-table";
 export default function DashboardPage() {
   const {
     shops,
+    documentCounts,
+    isDocumentCountsLoading,
+    documentCountsError,
     filteredShops,
     isLoading,
     isError,
@@ -58,7 +61,14 @@ export default function DashboardPage() {
         <h1 className="text-lg font-semibold">Overview</h1>
       </div>
 
-      <StatisticsGrid shops={shops} selectedFilter={selectedFilter} onFilterTap={setSelectedFilter} />
+      <StatisticsGrid
+        shops={shops}
+        documentCounts={documentCounts}
+        isDocumentCountsLoading={isDocumentCountsLoading}
+        documentCountsError={documentCountsError}
+        selectedFilter={selectedFilter}
+        onFilterTap={setSelectedFilter}
+      />
 
       <FilterSection
         shops={shops}

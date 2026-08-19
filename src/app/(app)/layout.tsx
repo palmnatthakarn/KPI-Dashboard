@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useAuthStore } from "@/store/auth-store";
+import { startEmployeeMappingsSync } from "@/lib/employee/employee-mapping-service";
 
 /**
  * Route-group shell for all authenticated pages.
@@ -25,6 +26,24 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
   }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+
+    void startEmployeeMappingsSync()
+      .then((stop) => {
+        if (cancelled) stop();
+        else unsubscribe = stop;
+      })
+      .catch((error) => console.error("Unable to start employee mapping sync", error));
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [status]);
 
   // Auto-collapse in the tablet band (600–800px), matching
   // ResponsiveHelper.getSidebarWidth's ScreenType.tablet -> 72px case.

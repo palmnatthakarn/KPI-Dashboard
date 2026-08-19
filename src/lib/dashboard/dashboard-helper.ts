@@ -27,33 +27,17 @@ export function getShopCountByStatus(shops: DocDetails[], status: ShopStatusFilt
 }
 
 export interface DocumentCounts {
-  deposit: number;
-  withdraw: number;
   total: number;
-  approved: number;
-  pending: number;
-  rejected: number;
+  requiredToRecord: number;
+  recorded: number;
 }
 
 export function getDocumentCounts(shops: DocDetails[]): DocumentCounts {
-  const counts: DocumentCounts = { deposit: 0, withdraw: 0, total: 0, approved: 0, pending: 0, rejected: 0 };
+  const counts: DocumentCounts = { total: 0, requiredToRecord: 0, recorded: 0 };
   if (shops.length === 0) return counts;
 
   for (const shop of shops) {
     if (shop.localImageCount != null) counts.total += shop.localImageCount;
-
-    if (shop.daily_transactions) {
-      for (const t of shop.daily_transactions) {
-        const accountType = (t.account_type ?? "").toUpperCase();
-        if (accountType === "INCOME") {
-          counts.deposit++;
-          counts.approved++;
-        } else if (accountType === "EXPENSES") {
-          counts.withdraw++;
-          counts.approved++;
-        }
-      }
-    }
   }
   return counts;
 }

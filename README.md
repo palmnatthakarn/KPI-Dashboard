@@ -36,6 +36,25 @@ pnpm dev
 - `NEXT_PUBLIC_API_BASE_URL` — `https://api.dedepos.com` (prod) or `https://api.dev.dedepos.com` (dev), same as the Flutter app's `--dart-define=BASE_URL`.
 - `NEXT_PUBLIC_FIREBASE_*` — from Firebase Console → Project Settings → General → Web app, for the `account-seaandhill` / `account-seaandhill-dev` project.
 
+### Employee names in Firestore
+
+Employee display-name mappings are shared through the Firestore document
+`settings/employeeMappings`. Before deploying:
+
+1. Create a Firestore database for the configured Firebase project.
+2. Enable **Authentication > Sign-in method > Anonymous**. Password login is
+   handled by the existing backend JWT, so the anonymous Firebase session is
+   used only to protect Firestore access. Google login continues to use its
+   Firebase user.
+3. Deploy the included rules with `firebase deploy --only firestore:rules`.
+
+On the first authenticated visit, mappings stored by an older build under the
+same web origin are merged into Firestore. Existing cloud values win if the
+same employee has already been renamed elsewhere. Because browsers isolate
+localStorage by origin, data from an old domain can only be migrated by
+deploying this build on that old domain once and visiting it before moving to
+the new domain.
+
 ## Notes
 
 - This project was scaffolded inside a memory-constrained sandbox (~900MB RAM,

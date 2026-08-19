@@ -128,6 +128,9 @@ export async function exportEmployeeMappingPdf(options: { rows: EmployeeMappingP
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = `employee_list_${new Date().toISOString().slice(0, 10)}.pdf`;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
   anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5_000);
 }

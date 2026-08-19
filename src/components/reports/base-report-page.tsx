@@ -20,7 +20,7 @@ function firstOfMonthISO() {
 
 interface Toast {
   message: string;
-  variant: "loading" | "success";
+  variant: "loading" | "success" | "error";
 }
 
 /**
@@ -55,13 +55,23 @@ export function BaseReportPage({
     return () => clearTimeout(t);
   }, [toast]);
 
-  function handleExport(type: "PDF" | "Excel") {
+  async function handleExport(type: "PDF" | "Excel") {
     if (type === "PDF" && selectedReportType) {
       const data = getReportTableData(selectedReportType);
       if (data) {
         setToast({ message: "กำลังสร้างไฟล์ PDF...", variant: "loading" });
-        // TODO: wire up @react-pdf/renderer export once the Documents/PDF
-        // export domain (task 8) lands — mirrors PdfExportService.exportTableToPdf.
+        try {
+          const { exportTablePdf } = await import("@/lib/reports/table-pdf-export");
+          await exportTablePdf({
+            title: selectedReportType,
+            subtitle: `ช่วงวันที่ ${startDate ?? "-"} ถึง ${endDate ?? "-"}`,
+            table: data,
+          });
+          setToast({ message: "ดาวน์โหลดรายงาน PDF สำเร็จ", variant: "success" });
+        } catch (error) {
+          console.error("Unable to export report PDF", error);
+          setToast({ message: "สร้างไฟล์ PDF ไม่สำเร็จ", variant: "error" });
+        }
         return;
       }
     }
@@ -107,8 +117,10 @@ export function BaseReportPage({
         <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm text-background shadow-lg">
           {toast.variant === "loading" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
+          ) : toast.variant === "success" ? (
             <CheckCircle2 className="h-4 w-4" />
+          ) : (
+            <X className="h-4 w-4" />
           )}
           {toast.message}
         </div>

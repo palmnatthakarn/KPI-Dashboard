@@ -1,10 +1,18 @@
 "use client";
 
-import { Folder } from "lucide-react";
+import { Folder, Loader2 } from "lucide-react";
 import type { DocumentCounts } from "@/lib/dashboard/dashboard-helper";
 
 /** Ported from EnhancedDocumentCard in dashboard_statistics_grid.dart. */
-export function DocumentCard({ counts }: { counts: DocumentCounts }) {
+export function DocumentCard({
+  counts,
+  isLoading,
+  error,
+}: {
+  counts: DocumentCounts;
+  isLoading: boolean;
+  error: Error | null;
+}) {
   const numFmt = new Intl.NumberFormat("th-TH");
 
   return (
@@ -21,11 +29,26 @@ export function DocumentCard({ counts }: { counts: DocumentCounts }) {
             <Folder className="h-5 w-5 text-[#2563EB]" />
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <DetailItem label="รายรับ" value={numFmt.format(counts.deposit)} dotColor="#1D4ED8" />
-          <DetailItem label="รายจ่าย" value={numFmt.format(counts.withdraw)} dotColor="#3B82F6" />
-          <DetailItem label="จัดการแล้ว" value={numFmt.format(counts.approved)} dotColor="#60A5FA" />
-        </div>
+        {error ? (
+          <p className="flex min-h-9 items-center text-[11px] font-medium text-red-600">
+            โหลดข้อมูลเอกสารไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง
+          </p>
+        ) : isLoading ? (
+          <p className="flex min-h-9 items-center justify-center gap-1.5 text-[11px] font-medium text-[#64748B]">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            กำลังคำนวณข้อมูลจาก KPI...
+          </p>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <DetailItem label="เอกสารที่ต้องบันทึก" value={numFmt.format(counts.requiredToRecord)} dotColor="#D3F512" />
+            <DetailItem label="บันทึกแล้ว" value={numFmt.format(counts.recorded)} dotColor="#EF4444" />
+            <DetailItem
+              label="จัดการแล้ว"
+              value={`${numFmt.format(counts.recorded)}/${numFmt.format(counts.requiredToRecord)}`}
+              dotColor="#10B981"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

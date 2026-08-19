@@ -10,19 +10,22 @@ import {
   pdf,
 } from "@react-pdf/renderer";
 import { getDisplayName } from "@/lib/employee/employee-mapping-service";
-import type {
-  KpiCombinedEmployee,
-  KpiCombinedJournalItem,
-  KpiCombinedTaskItem,
-} from "@/types/kpi-combined";
+import type { KpiCombinedEmployee } from "@/types/kpi-combined";
 
-Font.register({
-  family: "Sarabun",
-  fonts: [
-    { src: "/fonts/Sarabun-Regular.ttf", fontWeight: 400 },
-    { src: "/fonts/Sarabun-Bold.ttf", fontWeight: 700 },
-  ],
-});
+let fontsRegistered = false;
+
+function registerFonts() {
+  if (fontsRegistered) return;
+  const origin = window.location.origin;
+  Font.register({
+    family: "Sarabun",
+    fonts: [
+      { src: `${origin}/fonts/Sarabun-Regular.ttf`, fontWeight: 400 },
+      { src: `${origin}/fonts/Sarabun-Bold.ttf`, fontWeight: 700 },
+    ],
+  });
+  fontsRegistered = true;
+}
 
 const headers = [
   "ร้าน / งาน / รายการ",
@@ -64,54 +67,6 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", left: 22, right: 22, bottom: 10, flexDirection: "row", justifyContent: "space-between", fontSize: 6, color: "#64748b" },
 });
 
-type PdfRow = { cells: string[]; context?: boolean };
-
-function uniqueJournals(items: KpiCombinedJournalItem[]) {
-  return new Set(items.map((item) => item.docNo.trim() || `${item.keyedAt?.toISOString() ?? ""}|${item.accountName}`)).size;
-}
-
-function taskRow(task: KpiCombinedTaskItem): PdfRow {
-  const journals = task.journalEntries.filter((journal) => journal.createdBy && (!task.isOwner || journal.createdBy.trim() === task.ownerBy.trim()));
-  const keyed = uniqueJournals(journals);
-  return {
-    context: !task.isOwner,
-    cells: [
-      `  งาน: ${task.taskName.trim() || task.taskCode}`,
-      String(task.totalDocument),
-      String(task.uploadedByThisEmployee),
-      String(task.waitingVerify),
-      String(task.passed),
-      String(task.cancelled),
-      String(task.notRecorded),
-      String(task.notRequiredApproval),
-      String(task.requiredToRecord),
-      String(task.recorded),
-      String(task.remaining),
-      String(task.completed),
-      String(keyed),
-      "0",
-      String(keyed),
-      String(journals.filter((item) => item.checkedBy).length),
-      String(journals.filter((item) => item.updatedBy).length),
-    ],
-  };
-}
-
-function journalRow(journal: KpiCombinedJournalItem, orphan = false): PdfRow {
-  const hasEvidence = Boolean(journal.resolvedTaskGuid?.trim() || journal.documentRef?.trim());
-  return {
-    cells: [
-      `    ${orphan ? "รายการไม่ผูกงาน" : "รายการ"}: ${journal.docNo || "-"} · ${journal.accountName || "-"}`,
-      "1", "-", "0", "0", "0", "0", "0", "0", "0", "0", "0",
-      journal.createdBy && hasEvidence ? "1" : "0",
-      journal.createdBy && !hasEvidence ? "1" : "0",
-      journal.createdBy ? "1" : "0",
-      journal.checkedBy ? "1" : "0",
-      journal.updatedBy ? "1" : "0",
-    ],
-  };
-}
-
 function shopCells(shop: KpiCombinedEmployee["shopStats"][number]): string[] {
   return [
     shop.shopName,
@@ -132,19 +87,6 @@ function shopCells(shop: KpiCombinedEmployee["shopStats"][number]): string[] {
     String(shop.journalChecked),
     String(shop.journalUpdated),
   ];
-}
-
-function employeeRows(employee: KpiCombinedEmployee): PdfRow[] {
-  const rows: PdfRow[] = [];
-  for (const shop of employee.shopStats) {
-    rows.push({ cells: shopCells(shop) });
-    for (const task of shop.tasks) {
-      rows.push(taskRow(task));
-      rows.push(...task.journalEntries.map((journal) => journalRow(journal)));
-    }
-    rows.push(...shop.orphanJournalEntries.map((journal) => journalRow(journal, true)));
-  }
-  return rows;
 }
 
 function PdfTableRow({ cells, header = false, total = false, context = false }: { cells: string[]; header?: boolean; total?: boolean; context?: boolean }) {
@@ -172,19 +114,31 @@ function KpiPdfDocument({ employees, startDate, endDate, userName }: { employees
         </View>
         <View style={styles.rule} />
         {employees.map((employee, employeeIndex) => {
-          const rows = employeeRows(employee);
+          // Keep PDF generation bounded: the interactive table can contain
+          // thousands of task/journal detail rows. The printable report uses
+          // the same KPI totals summarized per employee and shop, which is
+          // the useful management view and avoids freezing the browser.
+          const rows = employee.shopStats.map(shopCells);
+          const [firstRow, ...remainingRows] = rows;
           const totals = employee.shopStats.reduce(
             (acc, shop) => acc.map((value, index) => index === 0 ? 0 : value + (Number(shopCells(shop)[index]) || 0)),
             headers.map(() => 0)
           );
           return (
             <View key={employee.name} style={styles.group}>
-              <View style={styles.groupHeader} wrap={false}>
-                <Text style={styles.groupName}>{employeeIndex + 1}. {getDisplayName(employee.name)}</Text>
-                <Text style={styles.groupSummary}>บิลที่รับผิดชอบ {employee.totalDocuments} · อัปโหลด {employee.totalUploaded} รูป · คีย์บัญชี {employee.totalJournals + employee.totalJournalsNoPhoto} รายการ</Text>
+              {/* Keep the employee heading, column heading and first data
+                  row together. If they do not fit, react-pdf moves this
+                  whole block to the next page instead of orphaning the
+                  employee name at the bottom of the previous page. */}
+              <View wrap={false}>
+                <View style={styles.groupHeader}>
+                  <Text style={styles.groupName}>{employeeIndex + 1}. {getDisplayName(employee.name)}</Text>
+                  <Text style={styles.groupSummary}>บิลที่รับผิดชอบ {employee.totalDocuments} · อัปโหลด {employee.totalUploaded} รูป · คีย์บัญชี {employee.totalJournals + employee.totalJournalsNoPhoto} รายการ</Text>
+                </View>
+                <PdfTableRow cells={headers} header />
+                {firstRow ? <PdfTableRow cells={firstRow} /> : null}
               </View>
-              <PdfTableRow cells={headers} header />
-              {rows.map((row, rowIndex) => <PdfTableRow key={rowIndex} cells={row.cells} context={row.context} />)}
+              {remainingRows.map((row, rowIndex) => <PdfTableRow key={rowIndex} cells={row} />)}
               <PdfTableRow cells={["รวม", ...totals.slice(1).map(String)]} total />
             </View>
           );
@@ -199,12 +153,25 @@ function KpiPdfDocument({ employees, startDate, endDate, userName }: { employees
 }
 
 export async function exportKpiPdf(options: { employees: KpiCombinedEmployee[]; startDate: Date; endDate: Date; userName: string }) {
+  registerFonts();
+  const startedAt = performance.now();
+  console.info("[kpi-pdf] generation started", {
+    employees: options.employees.length,
+    shopRows: options.employees.reduce((total, employee) => total + employee.shopStats.length, 0),
+  });
   const blob = await pdf(<KpiPdfDocument {...options} />).toBlob();
+  console.info("[kpi-pdf] generation completed", {
+    durationMs: Math.round(performance.now() - startedAt),
+    bytes: blob.size,
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   const stamp = new Date().toISOString().slice(0, 10);
   anchor.href = url;
   anchor.download = `KPI_${stamp}.pdf`;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
   anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5_000);
 }

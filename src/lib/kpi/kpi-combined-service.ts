@@ -1,7 +1,11 @@
 import { listShops as listShopsRaw } from "@/lib/api/multi-shop-service";
 import { fetchTasksForShop } from "@/lib/api/task-service";
 import { getAllGLJournals } from "@/lib/api/journal-service";
-import { fetchDocNoToTaskGuidMap, fetchShopBillCount } from "@/lib/api/document-image-service";
+import {
+  fetchDocNoToTaskGuidMap,
+  fetchShopActiveDocumentCount,
+  fetchShopBillCount,
+} from "@/lib/api/document-image-service";
 import { saveKnownEmployees } from "@/lib/employee/employee-mapping-service";
 import { reconcileKpiEmployees, type ShopFetchResult } from "@/lib/kpi/kpi-reconcile";
 import type { KpiCombinedEmployee, KpiCombinedShopItem } from "@/types/kpi-combined";
@@ -21,16 +25,26 @@ function toIsoDate(d: Date): string {
 
 /** Ported from MultiShopService.listShops() normalization used by KpiCombinedBloc. */
 export async function listKpiShops(): Promise<KpiCombinedShopItem[]> {
-  const raw = await listShopsRaw();
-  return raw
-    .map((item) => {
-      const shopId = String(item.shopid ?? item.shop_id ?? item.id ?? "");
-      const names = item.names as { code?: string; name?: string }[] | undefined;
-      const thaiName = Array.isArray(names) ? names.find((n) => n.code === "th") ?? names[0] : undefined;
-      const shopName = String(item.shopname ?? item.shop_name ?? thaiName?.name ?? shopId);
-      return { shopId, shopName };
-    })
-    .filter((s) => s.shopId);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const raw = await listShopsRaw();
+    const shops = raw
+      .map((item) => {
+        const shopId = String(item.shopid ?? item.shop_id ?? item.id ?? "");
+        const names = item.names as { code?: string; name?: string }[] | undefined;
+        const thaiName = Array.isArray(names) ? names.find((n) => n.code === "th") ?? names[0] : undefined;
+        const shopName = String(item.shopname ?? item.shop_name ?? thaiName?.name ?? shopId);
+        return { shopId, shopName };
+      })
+      .filter((shop) => shop.shopId);
+
+    if (shops.length > 0) return shops;
+    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+  }
+
+  // An empty shop list is an API/session failure for an authenticated KPI
+  // request. Throw so React Query retries instead of caching a false zero
+  // summary for two minutes.
+  throw new Error("ไม่สามารถโหลดรายชื่อร้านสำหรับข้อมูล KPI ได้");
 }
 
 const GL_JOURNAL_PAGE_LIMIT = 1000;
@@ -94,15 +108,19 @@ async function fetchShopData(shopId: string, shopName: string, startDate: Date, 
 
   // None of these three call selectShop themselves, so they're safe to run concurrently
   // once the shop has been selected by fetchTasksForShop above.
-  const [glResult, docNoMapResult, billCount] = await Promise.all([
+  const [glResult, docNoMapResult, billCount, activeDocumentCount] = await Promise.all([
     fetchAllGLJournalsForShop(shopId, startIso, endIso),
-    fetchDocNoToTaskGuidMap({ fromDate: startIso, toDate: endIso }).catch(() => ({
+    // Keep this lookup undated, matching the monitor app. The selected KPI
+    // range applies to task/journal activity; filtering image groups by
+    // upload date can remove the evidence for an otherwise in-range task.
+    fetchDocNoToTaskGuidMap({}).catch(() => ({
       docNoToTaskGuid: new Map<string, string>(),
       taskUploaderCounts: new Map<string, Map<string, number>>(),
       totalItemsSeen: 0,
       apiReportedTotal: null,
     })),
     fetchShopBillCount({ fromDate: startIso, toDate: endIso }).catch(() => 0),
+    fetchShopActiveDocumentCount({ fromDate: startIso, toDate: endIso }).catch(() => 0),
   ]);
 
   return {
@@ -112,17 +130,20 @@ async function fetchShopData(shopId: string, shopName: string, startDate: Date, 
     docNoToTaskGuid: docNoMapResult.docNoToTaskGuid,
     taskUploaderCounts: docNoMapResult.taskUploaderCounts,
     billCount,
+    activeDocumentCount,
     complete: taskFetchOk && glResult.complete,
   };
 }
 
 interface CacheEntry {
   employees: KpiCombinedEmployee[];
+  activeDocumentTotal: number;
   expiresAt: number;
 }
 
 interface FetchOutcome {
   employees: KpiCombinedEmployee[];
+  activeDocumentTotal: number;
   incompleteShops: string[];
 }
 
@@ -146,6 +167,7 @@ export interface FetchKpiCombinedParams {
 
 export interface FetchKpiCombinedResult {
   employees: KpiCombinedEmployee[];
+  activeDocumentTotal: number;
   shops: KpiCombinedShopItem[];
   /** Shop names whose fetch didn't complete fully (task fetch failed or GL journal pagination gave up). */
   incompleteShops: string[];
@@ -166,12 +188,22 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
   if (!forceRefresh) {
     const cached = cache.get(key);
     if (cached && cached.expiresAt > Date.now()) {
-      return { employees: cached.employees, shops: allShops, incompleteShops: [] };
+      return {
+        employees: cached.employees,
+        activeDocumentTotal: cached.activeDocumentTotal,
+        shops: allShops,
+        incompleteShops: [],
+      };
     }
     const pending = inFlight.get(key);
     if (pending) {
       const outcome = await pending;
-      return { employees: outcome.employees, shops: allShops, incompleteShops: outcome.incompleteShops };
+      return {
+        employees: outcome.employees,
+        activeDocumentTotal: outcome.activeDocumentTotal,
+        shops: allShops,
+        incompleteShops: outcome.incompleteShops,
+      };
     }
   }
 
@@ -190,20 +222,31 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
     }
 
     const employees = reconcileKpiEmployees(shopResults, startDate, endDate);
+    const activeDocumentTotal = shopResults.reduce(
+      (total, shop) => total + shop.activeDocumentCount,
+      0
+    );
 
     if (incompleteShops.length === 0) {
-      cache.set(key, { employees, expiresAt: Date.now() + CACHE_TTL_MS });
+      cache.set(key, { employees, activeDocumentTotal, expiresAt: Date.now() + CACHE_TTL_MS });
     }
 
-    saveKnownEmployees(employees.map((e) => e.name));
+    void saveKnownEmployees(employees.map((e) => e.name)).catch((error) =>
+      console.error("Unable to save known employees", error)
+    );
 
-    return { employees, incompleteShops };
+    return { employees, activeDocumentTotal, incompleteShops };
   })();
 
   inFlight.set(key, promise);
   try {
     const outcome = await promise;
-    return { employees: outcome.employees, shops: allShops, incompleteShops: outcome.incompleteShops };
+    return {
+      employees: outcome.employees,
+      activeDocumentTotal: outcome.activeDocumentTotal,
+      shops: allShops,
+      incompleteShops: outcome.incompleteShops,
+    };
   } finally {
     inFlight.delete(key);
   }

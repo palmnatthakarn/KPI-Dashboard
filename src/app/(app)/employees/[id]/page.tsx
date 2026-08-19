@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 
 /**
- * EmployeeDetailPage (employee_detail_page.dart) is unreachable dead code
- * in the Flutter source — confirmed via grep, zero instantiations anywhere.
- * Employee data now lives inline in the KPI table (expandable rows), not a
- * dedicated detail route. Redirect anyone with the old link to /kpi.
+ * Legacy compatibility route.
+ *
+ * The previous Flutter app exposed employee-detail navigation, but this
+ * Next.js port currently presents the combined employee KPI view at /kpi.
  */
 export default function Page() {
   redirect("/kpi");
