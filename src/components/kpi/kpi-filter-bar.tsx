@@ -30,10 +30,6 @@ function fromIsoDate(s: string): Date {
   return new Date(y, m - 1, d);
 }
 
-function formatShort(d: Date): string {
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
-}
-
 function formatDisplayDate(d: Date): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
@@ -99,10 +95,10 @@ export function KpiFilterBar({
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-[220px] flex-1">
-          <label className="mb-1 block text-[11px] font-medium text-muted-foreground">พนักงาน</label>
+    <div className="rounded-2xl border border-border bg-card p-3 shadow-sm">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_minmax(240px,1fr)_150px_150px_auto] xl:items-start">
+        <div className="min-w-0">
+          <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">พนักงาน</label>
           <SearchableMultiDropdown
             items={employeeItems}
             selectedIds={draftEmployeeNames}
@@ -111,8 +107,8 @@ export function KpiFilterBar({
             allLabel="พนักงานทั้งหมด"
           />
         </div>
-        <div className="min-w-[220px] flex-1">
-          <label className="mb-1 block text-[11px] font-medium text-muted-foreground">ร้าน</label>
+        <div className="min-w-0">
+          <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">ร้าน</label>
           <SearchableMultiDropdown
             items={shopItems}
             selectedIds={draftShopIds}
@@ -121,23 +117,24 @@ export function KpiFilterBar({
             allLabel="ทุกร้าน"
           />
         </div>
-        <div>
-          <label className="mb-1 block text-[11px] font-medium text-muted-foreground">ช่วงวันที่</label>
+        <div className="min-w-0">
+          <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">วันที่เริ่มต้น</label>
           <DatePickerField value={draftStart} max={draftEnd} onChange={setDraftStart} />
         </div>
-        <div>
-          <label className="mb-1 block text-[11px] font-medium text-muted-foreground">วันสิ้นสุด</label>
+        <div className="min-w-0">
+          <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">วันที่สิ้นสุด</label>
           <DatePickerField value={draftEnd} min={draftStart} onChange={setDraftEnd} />
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 md:col-span-2 xl:col-span-1 xl:pt-[21px]">
           <button
             type="button"
             title="รีเซ็ตตัวกรอง"
             onClick={() => {
               onReset();
             }}
-            className="flex h-[38px] w-[38px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-accent"
+            aria-label="รีเซ็ตตัวกรอง"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -146,7 +143,8 @@ export function KpiFilterBar({
             title="ส่งออก PDF"
             onClick={onExport}
             disabled={!canExport}
-            className="flex h-[38px] w-[38px] items-center justify-center rounded-xl border border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="ส่งออก PDF"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
           >
             <FileDown className="h-4 w-4" />
           </button>
@@ -154,25 +152,15 @@ export function KpiFilterBar({
             type="button"
             disabled={isSearching}
             onClick={handleSearch}
-            className="flex h-[38px] items-center gap-2 rounded-xl bg-primary px-4 text-[12px] font-semibold text-primary-foreground shadow-sm disabled:opacity-60"
+            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 xl:flex-none"
           >
             {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchIcon className="h-4 w-4" />}
             ค้นหา
           </button>
         </div>
       </div>
-
-      <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-        <FilterChip label={employeeNames.length > 0 ? `${employeeNames.length} พนักงาน` : "พนักงานทั้งหมด"} />
-        <FilterChip label={shopIds.length > 0 ? `${shopIds.length} ร้าน` : "ทุกร้าน"} />
-        <FilterChip label={`${formatShort(startDate)} - ${formatShort(endDate)}`} />
-      </div>
     </div>
   );
-}
-
-function FilterChip({ label }: { label: string }) {
-  return <span className="rounded-full bg-secondary px-2.5 py-1 font-medium text-secondary-foreground">{label}</span>;
 }
 
 function DatePickerField({
@@ -213,7 +201,7 @@ function DatePickerField({
         <button
           type="button"
           className={cn(
-            "flex h-[38px] min-w-[128px] items-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-left text-[12px] font-medium text-foreground transition-colors hover:border-brand-blue/40",
+            "flex h-10 w-full min-w-[128px] items-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-left text-[12px] font-medium text-foreground transition-colors hover:border-brand-blue/40",
             open && "border-brand-blue/40"
           )}
         >
@@ -223,7 +211,11 @@ function DatePickerField({
       </Popover.Trigger>
 
       <Popover.Portal>
-        <Popover.Content align="start" sideOffset={8} className="z-50 w-[300px] rounded-2xl border border-border bg-card p-3 shadow-lg">
+        <Popover.Content
+          align="start"
+          sideOffset={8}
+          className="isolate z-50 w-[300px] rounded-2xl border border-border bg-card p-3 opacity-100 shadow-xl"
+        >
           <div className="flex items-center justify-between border-b border-border pb-3">
             <button
               type="button"

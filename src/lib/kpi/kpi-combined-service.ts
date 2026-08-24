@@ -151,6 +151,36 @@ const CACHE_TTL_MS = 2 * 60 * 1000;
 const cache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Promise<FetchOutcome>>();
 
+/**
+ * Global serialization gate for the per-shop fetch sequence.
+ *
+ * `/gl/journal` and `/documentimagegroup` are scoped to whichever shop was
+ * last selected via POST /select-shop on the BACKEND SESSION — not per
+ * request. The per-call shop loop below is already strictly sequential to
+ * protect itself, but that guarantee stops at the edges of one
+ * `fetchKpiCombinedData` call. Two DIFFERENT calls — e.g. one kicked off by
+ * the Overview page's date range, another by the KPI page's — have no
+ * relationship to each other and can run concurrently, so their `selectShop`
+ * calls can interleave: call A selects shop 1, call B selects shop 2 before
+ * A's task fetch for shop 1 lands, and A silently receives shop 2's tasks.
+ * No request fails, nothing throws, `incompleteShops` never fires — the
+ * numbers are just quietly wrong. This queue extends "strictly sequential"
+ * to every call app-wide so that can't happen, at the cost of one caller
+ * waiting for another when both fetch around the same time.
+ */
+let fetchGate: Promise<void> = Promise.resolve();
+
+function withFetchGate<T>(work: () => Promise<T>): Promise<T> {
+  const run = fetchGate.then(work, work);
+  // Advance the gate regardless of outcome — a rejection from one caller
+  // must not wedge the queue for everyone after it.
+  fetchGate = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
+
 function cacheKey(shopIds: string[], startDate: Date, endDate: Date): string {
   const sorted = [...shopIds].sort().join(",");
   return `${sorted}|${toIsoDate(startDate)}|${toIsoDate(endDate)}`;
@@ -207,7 +237,11 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
     }
   }
 
-  const promise: Promise<FetchOutcome> = (async () => {
+  // Gated app-wide — see withFetchGate's doc comment. This is what actually
+  // stops the Overview page's fetch and the KPI page's fetch (or any other
+  // concurrent caller) from interleaving their shop selections on the
+  // backend session.
+  const promise: Promise<FetchOutcome> = withFetchGate(async () => {
     const shopResults: ShopFetchResult[] = [];
     const incompleteShops: string[] = [];
 
@@ -236,7 +270,7 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
     );
 
     return { employees, activeDocumentTotal, incompleteShops };
-  })();
+  });
 
   inFlight.set(key, promise);
   try {

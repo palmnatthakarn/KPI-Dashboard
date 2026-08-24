@@ -1,57 +1,42 @@
-import { cn } from "@/lib/utils";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import type { ReportTableData } from "@/types/report";
+
+interface ReportRow {
+  cells: string[];
+  isTotal: boolean;
+}
 
 /** Ported from GenericReportTable (generic_report_table.dart). */
 export function GenericReportTable({ headers, rows, highlightRows }: ReportTableData) {
-  return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-card">
-      <table className="w-full min-w-[800px] text-sm">
-        <thead className="bg-secondary/60">
-          <tr>
-            {headers.map((h, i) => (
-              <th
-                key={i}
-                className={cn(
-                  "px-4 py-3 text-[13px] font-bold text-[#334155]",
-                  i === 0 ? "text-left" : "text-right"
-                )}
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((cells, rowIndex) => {
-            const isHighlight = highlightRows?.includes(rowIndex) ?? false;
-            const isEven = rowIndex % 2 === 0;
-            const isTotalRow = isHighlight || cells[0]?.includes("รวม");
+  const data: ReportRow[] = rows.map((cells, index) => ({
+    cells,
+    // A row is a total either because the report flagged it or because its
+    // label reads as one — both conventions exist in the report payloads.
+    isTotal: (highlightRows?.includes(index) ?? false) || (cells[0]?.includes("รวม") ?? false),
+  }));
 
-            return (
-              <tr
-                key={rowIndex}
-                className={cn(
-                  "border-t border-border/60 transition-colors hover:bg-secondary/40",
-                  isHighlight ? "bg-[#EFF6FF]" : isEven ? "bg-card" : "bg-secondary/20"
-                )}
-              >
-                {cells.map((cell, cellIndex) => (
-                  <td
-                    key={cellIndex}
-                    className={cn(
-                      "px-4 py-2.5 whitespace-nowrap",
-                      cellIndex === 0 ? "text-left" : "text-right",
-                      isTotalRow ? "font-bold text-[#0F172A]" : "text-[#475569]"
-                    )}
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+  const columns: Column<ReportRow>[] = headers.map((header, index) => ({
+    id: `col-${index}`,
+    header,
+    // Only the first column is a label; the rest are figures, right-aligned
+    // so digits line up down the column.
+    align: index === 0 ? "left" : "right",
+    cellClassName: index === 0 ? "whitespace-nowrap" : "whitespace-nowrap tabular-nums",
+    cell: (row) => (
+      <span className={row.isTotal ? "font-bold text-foreground" : "text-muted-foreground"}>
+        {row.cells[index]}
+      </span>
+    ),
+  }));
+
+  return (
+    <DataTable
+      columns={columns}
+      rows={data}
+      getRowKey={(_, index) => `row-${index}`}
+      minWidth={800}
+      zebra
+      getRowClassName={(row) => (row.isTotal ? "bg-info-soft/60" : undefined)}
+    />
   );
 }

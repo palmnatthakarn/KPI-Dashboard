@@ -1,5 +1,19 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Resolves a token triple to CSS variables so the color follows the active
+ * theme. The literal hex values live in src/app/globals.css (:root and .dark)
+ * and are mirrored, light-mode only, in src/lib/design/tokens.ts for the few
+ * inline-style consumers that cannot use a class.
+ */
+function themed(name: string) {
+  return {
+    DEFAULT: `hsl(var(--${name}))`,
+    strong: `hsl(var(--${name}-strong))`,
+    soft: `hsl(var(--${name}-soft))`,
+  };
+}
+
 const config: Config = {
   darkMode: "class",
   content: [
@@ -48,12 +62,16 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // VAT status thresholds — mirrors AppConstants
+        // VAT status thresholds — mirrors AppConstants. Theme-aware: the same
+        // class reads as a dark tint on light and a light tint on dark.
+        // `info` is kept separate from shadcn's `accent` token above, which is
+        // a surface color, not an emphasis color.
         status: {
-          safe: "#16A34A",
-          warning: "#D97706",
-          exceeded: "#DC2626",
+          safe: themed("status-safe"),
+          warning: themed("status-warning"),
+          exceeded: themed("status-exceeded"),
         },
+        info: themed("info"),
         // Brand palette — project theme
         brand: {
           green: "#81c06c",

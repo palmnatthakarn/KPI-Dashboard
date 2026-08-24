@@ -5,10 +5,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { fetchShopsSummary } from "@/lib/dashboard/shop-repository";
 import {
   filterShops,
-  getDocumentCounts,
+  previousDateRange,
+  statusCounts,
   type DocumentCounts,
   type ShopStatusFilter,
 } from "@/lib/dashboard/dashboard-helper";
+import { getCurrentYearDateRange } from "@/lib/api/multi-shop-service";
 import { fetchKpiCombinedData } from "@/lib/kpi/kpi-combined-service";
 
 function parseLocalDate(value: string): Date {
@@ -71,6 +73,39 @@ export function useDashboard() {
 
   const shops = useMemo(() => query.data ?? [], [query.data]);
 
+  // Trend comparison. When no range is picked the main query falls back to the
+  // whole current year, so the comparison has to mirror that same window.
+  const comparisonRange = useMemo(() => {
+    if (dateRange) return previousDateRange(dateRange);
+    const year = getCurrentYearDateRange();
+    return previousDateRange({ start: year.startDate, end: year.endDate });
+  }, [dateRange]);
+
+  const previousQuery = useQuery({
+    queryKey: ["dashboard", "shops-summary", comparisonRange.start, comparisonRange.end],
+    queryFn: () => fetchShopsSummary(comparisonRange.start, comparisonRange.end),
+    // Secondary to the visible data — never let it delay first paint, and skip
+    // it entirely while the main range is still resolving.
+    enabled: query.isSuccess,
+    placeholderData: keepPreviousData,
+  });
+
+  /**
+   * Change in shop count per status vs. the previous period. Null until the
+   * comparison resolves so the tiles render a value immediately rather than
+   * waiting on a second request.
+   */
+  const statusDeltas = useMemo(() => {
+    if (!previousQuery.data || !query.isSuccess) return null;
+    const current = statusCounts(shops);
+    const previous = statusCounts(previousQuery.data);
+    return {
+      safe: current.safe - previous.safe,
+      warning: current.warning - previous.warning,
+      exceeded: current.exceeded - previous.exceeded,
+    };
+  }, [previousQuery.data, query.isSuccess, shops]);
+
   const kpiRange = useMemo(() => dashboardKpiRange(dateRange), [dateRange]);
   const kpiQuery = useQuery({
     queryKey: [
@@ -94,10 +129,10 @@ export function useDashboard() {
 
   const documentCounts = useMemo<DocumentCounts>(() => {
     const employees = kpiQuery.data?.employees;
-    const importedDocumentTotal =
-      kpiQuery.data?.activeDocumentTotal ?? getDocumentCounts(shops).total;
     if (!employees) {
-      return { total: importedDocumentTotal, requiredToRecord: 0, recorded: 0 };
+      // DocumentCard shows a loading skeleton in place of `total` while
+      // `employees` is unset, so this value is never actually seen.
+      return { total: 0, requiredToRecord: 0, recorded: 0 };
     }
 
     const rangeStart = new Date(
@@ -115,16 +150,30 @@ export function useDashboard() {
       999
     ).getTime();
 
-    // The main total comes from active /documentimagegroup records in the
-    // selected import-date range. This includes documents without a task and
-    // later additions to older tasks, but excludes records already deleted.
+    // `total` is the same figure the KPI page shows as "จำนวนบิลทั้งหมด" (see
+    // summary.totalDocuments in use-kpi-combined.ts): both sum
+    // employee.totalDocuments from the SAME fetchKpiCombinedData result.
+    // This part is verified working (matches KPI's total within noise when
+    // both fetch cleanly) — do not change it while investigating the below.
+    //
+    // `requiredToRecord`/`recorded`: reverted back to the ownerAt-filtered
+    // version, matching monitor's separate KpiBloc. Two attempts to make
+    // these agree with `total`'s broader task scope both produced numbers
+    // that didn't hold up under testing — summing task.recorded across every
+    // contributor row overcounted (recorded > required, "จัดการแล้ว" over
+    // 100%), and switching to employee.completedDocuments undercounted
+    // badly (completedDocuments is all-or-nothing per task: a task that's
+    // 90% keyed but not yet closed contributes zero). Neither `recorded` nor
+    // any existing pre-aggregated field cleanly answers "documents recorded
+    // so far" — that needs the real totaldocumentstatus payload from a live
+    // task to nail down, which is still pending. Until then this is the last
+    // known-good version: not reconciled with `total`, but internally sane
+    // (recorded <= required).
     const counts: DocumentCounts = {
-      total: importedDocumentTotal,
+      total: employees.reduce((sum, employee) => sum + employee.totalDocuments, 0),
       requiredToRecord: 0,
       recorded: 0,
     };
-    // The workflow-status totals continue to match monitor's KpiBloc: the
-    // date range is applied to task.ownerAt before employee rows are summed.
     for (const employee of employees) {
       for (const shop of employee.shopStats) {
         for (const task of shop.tasks) {
@@ -141,13 +190,7 @@ export function useDashboard() {
       }
     }
     return counts;
-  }, [
-    kpiQuery.data?.activeDocumentTotal,
-    kpiQuery.data?.employees,
-    kpiRange.endDate,
-    kpiRange.startDate,
-    shops,
-  ]);
+  }, [kpiQuery.data?.employees, kpiRange.endDate, kpiRange.startDate]);
 
   const filteredShops = useMemo(
     () => filterShops(shops, searchQuery, selectedFilter),
@@ -156,7 +199,19 @@ export function useDashboard() {
 
   return {
     shops,
+    statusDeltas,
+    comparisonRange,
+    /** The exact range documentCounts/statusDeltas were computed over — surface this next to those numbers so it's checkable against the KPI page's own date picker. */
+    kpiRange,
     documentCounts,
+    /**
+     * Shops whose task/journal fetch didn't complete this round — when
+     * non-empty, `documentCounts.total` is an undercount, not a wrong
+     * definition. The KPI page already surfaces this same field; Overview
+     * silently dropped it before, which is how a partial fetch could look
+     * like a real (and misleadingly authoritative) number.
+     */
+    incompleteShops: kpiQuery.data?.incompleteShops ?? [],
     isDocumentCountsLoading: kpiQuery.isPending || kpiQuery.isFetching,
     documentCountsError: kpiQuery.error,
     filteredShops,

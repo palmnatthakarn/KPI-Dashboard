@@ -1,10 +1,13 @@
 "use client";
 
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import { useDashboard } from "@/hooks/use-dashboard";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { StatisticsGrid } from "@/components/dashboard/statistics-grid";
 import { FilterSection } from "@/components/dashboard/filter-section";
 import { ShopTable } from "@/components/dashboard/shop-table";
+import { formatThaiDate } from "@/lib/utils";
 
 /**
  * Ported from dashboard_content.dart + DashboardBloc. Statistics grid,
@@ -13,6 +16,7 @@ import { ShopTable } from "@/components/dashboard/shop-table";
 export default function DashboardPage() {
   const {
     shops,
+    statusDeltas,
     documentCounts,
     isDocumentCountsLoading,
     documentCountsError,
@@ -27,6 +31,8 @@ export default function DashboardPage() {
     setSelectedFilter,
     dateRange,
     setDateRange,
+    kpiRange,
+    incompleteShops,
   } = useDashboard();
 
   if (isLoading) {
@@ -40,26 +46,37 @@ export default function DashboardPage() {
 
   if (isError) {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-sm text-destructive">
-          โหลดข้อมูลไม่สำเร็จ: {error instanceof Error ? error.message : "unknown error"}
-        </p>
-        <button
-          onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          ลองใหม่
-        </button>
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        size="page"
+        title="โหลดข้อมูลไม่สำเร็จ"
+        description={error instanceof Error ? error.message : "unknown error"}
+        action={
+          <button
+            onClick={() => refetch()}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            ลองใหม่
+          </button>
+        }
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Overview</h1>
-      </div>
+      <PageHeader
+        title="Overview"
+        description={`ภาพรวมสถานะภาษีของทุกสาขา • ข้อมูลสถิติ ณ วันที่ ${formatThaiDate(kpiRange.startDate)} - ${formatThaiDate(kpiRange.endDate)}`}
+      />
+
+      {incompleteShops.length > 0 && (
+        <div className="flex items-center gap-2 rounded-xl bg-status-warning-soft px-4 py-2.5 text-xs text-status-warning-strong">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          โหลดข้อมูลไม่ครบสำหรับร้าน: {incompleteShops.join(", ")} — ตัวเลขสถิติด้านล่างอาจต่ำกว่าความจริง ลองรีเฟรชอีกครั้ง
+        </div>
+      )}
 
       <StatisticsGrid
         shops={shops}
@@ -68,6 +85,7 @@ export default function DashboardPage() {
         documentCountsError={documentCountsError}
         selectedFilter={selectedFilter}
         onFilterTap={setSelectedFilter}
+        statusDeltas={statusDeltas}
       />
 
       <FilterSection

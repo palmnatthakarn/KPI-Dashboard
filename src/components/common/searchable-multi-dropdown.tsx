@@ -48,16 +48,16 @@ export function SearchableMultiDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-[38px] w-full items-center justify-between gap-2 rounded-xl border border-[#E5E7EB] bg-white px-3 text-[12px] font-medium text-foreground shadow-sm"
+        className="flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 text-[12px] font-medium text-foreground shadow-sm"
       >
         <span className="truncate">{triggerLabel}</span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-[#6B7280] transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-[42px] z-50 max-h-72 w-72 overflow-hidden rounded-xl border border-border bg-white shadow-lg">
+          <div className="absolute left-0 top-[44px] z-50 max-h-72 w-72 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
             <div className="flex items-center gap-2 border-b border-border px-3 py-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <input

@@ -1,12 +1,22 @@
-/** Ported verbatim from lib/pages/kpi/kpi_constants.dart. */
+import { statusPalette, accentPalette, categoricalPalette } from "@/lib/design/tokens";
+
+/**
+ * Ported from lib/pages/kpi/kpi_constants.dart.
+ *
+ * The STRUCTURAL colors below (section backgrounds, borders, row tints) are
+ * still verbatim from the Flutter source. The FOREGROUND colors are not: the
+ * originals are mid-tone shades that get rendered as 8-9px status-chip text
+ * and as white-on-color avatar initials, where they sat near 2.5:1 — far under
+ * WCAG AA. They now resolve through the shared design tokens instead.
+ */
 export const KpiColors = {
-  totalDocuments: "#6366F1",
-  waitingKey: "#64748B",
-  waitingFix: "#3B82F6",
+  totalDocuments: categoricalPalette[0],
+  waitingKey: accentPalette.neutral.strong,
+  waitingFix: accentPalette.info.strong,
   assigned: "#86595E",
-  waitingVerify: "#F59E0B",
-  completed: "#10B981",
-  cancelled: "#EF4444",
+  waitingVerify: statusPalette.warning.strong,
+  completed: statusPalette.safe.strong,
+  cancelled: statusPalette.exceeded.strong,
   baseColor: "#1E293B",
 
   cardBackground: "#FFFFFF",
@@ -17,16 +27,21 @@ export const KpiColors = {
 
   primaryText: "#1E293B",
   secondaryText: "#374151",
-  mutedText: "#94A3B8",
+  mutedText: "#64748B",
 
-  avatarColors: ["#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899", "#6366F1"],
+  /**
+   * Avatar backgrounds, drawn with white initials on top. A color readable as
+   * text on white is equally readable as white-on-itself (same contrast
+   * formula), so the categorical palette is safe for both uses.
+   */
+  avatarColors: categoricalPalette,
 
-  delayUpload: "#EF4444",
-  delayVerify: "#F59E0B",
-  delayRecord: "#F97316",
+  delayUpload: statusPalette.exceeded.strong,
+  delayVerify: statusPalette.warning.strong,
+  delayRecord: categoricalPalette[2],
 
-  incentivePass: "#10B981",
-  incentiveFail: "#EF4444",
+  incentivePass: statusPalette.safe.strong,
+  incentiveFail: statusPalette.exceeded.strong,
 
   /** จำนวน */
   section1Background: "#E0F2FE",
@@ -39,7 +54,7 @@ export const KpiColors = {
   journalGroupBackground: "#E0E7FF",
 
   /** Contributor-row context values — informational only, not counted into that row's own total. */
-  contextValue: "#EA580C",
+  contextValue: categoricalPalette[2],
   /** Zero-value cells render as a muted em-dash instead of "0". */
   zeroValue: "#CBD5E1",
 } as const;

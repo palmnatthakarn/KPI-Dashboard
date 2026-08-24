@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, Inbox, ImageUp, User, Users } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, ChevronRight, Inbox, ImageUp, Store, User, Users } from "lucide-react";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { Pagination } from "@/components/common/pagination";
+import { EmptyState } from "@/components/ui/empty-state";
 import { KpiColors, KpiDimensions } from "@/lib/kpi/kpi-constants";
 import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
 import type { KpiCombinedEmployee, KpiCombinedShopStat, KpiCombinedTaskItem } from "@/types/kpi-combined";
@@ -28,8 +29,10 @@ function numCell(value: number, bg?: string) {
   const isZero = value === 0;
   return (
     <div
-      className="flex h-full items-center justify-center border-l border-slate-100 text-[12px] font-semibold tabular-nums"
-      style={{ backgroundColor: bg, color: isZero ? KpiColors.zeroValue : KpiColors.primaryText }}
+      className={`flex h-full items-center justify-center border-l border-border text-[12px] font-semibold tabular-nums ${
+        isZero ? "text-muted-foreground/60" : "text-foreground"
+      }`}
+      style={{ backgroundColor: bg }}
     >
       {isZero ? "—" : value.toLocaleString("th-TH")}
     </div>
@@ -38,7 +41,7 @@ function numCell(value: number, bg?: string) {
 
 function dashCell(bg?: string) {
   return (
-    <div className="flex h-full items-center justify-center border-l border-slate-100 text-[12px] tabular-nums" style={{ backgroundColor: bg, color: KpiColors.zeroValue }}>
+    <div className="flex h-full items-center justify-center border-l border-border text-[12px] tabular-nums text-muted-foreground/60" style={{ backgroundColor: bg }}>
       —
     </div>
   );
@@ -91,12 +94,12 @@ function journalStatsForTask(task: KpiCombinedTaskItem) {
 }
 
 const GROUP_HEADERS = [
-  { label: "", span: 1, color: "transparent" },
-  { label: "", span: 1, color: "#F8FAFC" },
-  { label: "สถานะการตรวจสอบ", span: 5, color: "#F8FAFC" },
-  { label: "สถานะการบันทึกบัญชี", span: 4, color: "#F8FAFC" },
-  { label: "บันทึกบัญชี (GL)", span: 5, color: "#F8FAFC" },
-  { label: "", span: 1, color: "transparent" },
+  { label: "", span: 1, tinted: false },
+  { label: "", span: 1, tinted: true },
+  { label: "สถานะการตรวจสอบ", span: 5, tinted: true },
+  { label: "สถานะการบันทึกบัญชี", span: 4, tinted: true },
+  { label: "บันทึกบัญชี (GL)", span: 5, tinted: true },
+  { label: "", span: 1, tinted: false },
 ];
 
 const COLUMN_LABELS = [
@@ -172,14 +175,7 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
   }
 
   if (employees.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-        <div className="rounded-full bg-slate-100 p-6">
-          <Inbox className="h-12 w-12 text-slate-400" />
-        </div>
-        <p className="text-sm text-muted-foreground">ไม่พบข้อมูล</p>
-      </div>
-    );
+    return <EmptyState icon={Inbox} size="page" title="ไม่พบข้อมูล" />;
   }
 
   const fs = (base: number) => `${base * fontScale}px`;
@@ -188,38 +184,54 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
   const pageEmployees = employees.slice((effectivePage - 1) * rowsPerPage, effectivePage * rowsPerPage);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-4">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4">
         <div>
-          <h2 className="text-[15px] font-semibold text-slate-900">รายชื่อพนักงาน</h2>
-          <p className="mt-0.5 text-[11px] text-slate-500">คลิกที่รายชื่อเพื่อดูรายละเอียดร้านและงาน</p>
+          <h2 className="text-[15px] font-semibold text-foreground">รายชื่อพนักงาน</h2>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">คลิกที่รายชื่อเพื่อดูรายละเอียดร้านและงาน</p>
         </div>
-        <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+        <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-info-strong">
           ทั้งหมด {employees.length.toLocaleString("th-TH")} คน
         </span>
       </div>
-      <div className="overflow-x-auto" style={{ fontSize: fs(12) }}>
+
+      <div className="divide-y divide-border md:hidden">
+        {pageEmployees.map((employee) => (
+          <MobileEmployeeCard
+            key={employee.name}
+            employee={employee}
+            expanded={expandedEmployees.has(employee.name)}
+            expandedShops={expandedShops}
+            onToggleEmployee={toggleEmployee}
+            onToggleShop={toggleShop}
+          />
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block" style={{ fontSize: fs(12) }}>
         <div className="w-full" style={{ minWidth: GRID_MIN_WIDTH }}>
         {/* Group banner row */}
-        <div className="grid border-b border-slate-200" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+        <div className="grid border-b border-border" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
           {GROUP_HEADERS.map((g, i) => (
             <div
               key={i}
-              style={{ gridColumn: `span ${g.span}`, backgroundColor: g.color, fontSize: fs(10) }}
-              className="flex h-6 items-center justify-center font-semibold uppercase tracking-wide text-slate-500"
+              style={{ gridColumn: `span ${g.span}`, fontSize: fs(10) }}
+              className={`flex h-6 items-center justify-center font-semibold uppercase tracking-wide text-muted-foreground ${
+                g.tinted ? "bg-secondary" : ""
+              }`}
             >
               {g.label}
             </div>
           ))}
         </div>
         {/* Column label row */}
-        <div className="grid border-b border-slate-200 bg-slate-50" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
+        <div className="grid border-b border-border bg-secondary" style={{ gridTemplateColumns: GRID_TEMPLATE }}>
           {COLUMN_LABELS.map((label, i) => (
             <div
               key={i}
               title={COLUMN_TOOLTIPS[label]}
               style={{ fontSize: fs(11) }}
-              className={`flex h-10 items-center border-l border-slate-200 px-2 font-semibold text-slate-600 ${i === 0 ? "justify-start border-l-0" : "justify-center text-center"}`}
+              className={`flex h-10 items-center border-l border-border px-2 font-semibold text-muted-foreground ${i === 0 ? "justify-start border-l-0" : "justify-center text-center"}`}
             >
               {label}
             </div>
@@ -230,19 +242,19 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
           const displayName = getDisplayName(emp.name);
           const isExpanded = expandedEmployees.has(emp.name);
           return (
-            <div key={emp.name} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"}>
+            <div key={emp.name} className={idx % 2 === 0 ? "bg-card" : "bg-secondary/40"}>
               <div
-                className="group grid cursor-pointer border-b border-slate-100 transition-colors hover:bg-indigo-50/40"
+                className="group grid cursor-pointer border-b border-border transition-colors hover:bg-accent/40"
                 style={{ gridTemplateColumns: GRID_TEMPLATE, minHeight: 64 }}
                 onClick={() => toggleEmployee(emp.name)}
               >
-                <div className="flex items-center gap-3 border-l-2 border-l-transparent px-3 py-2 transition-colors group-hover:border-l-indigo-500">
+                <div className="flex items-center gap-3 border-l border-l-transparent px-3 py-2 transition-colors group-hover:border-l-indigo-400">
                   <UserAvatar name={displayName} size={KpiDimensions.avatarRadius * 2} />
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-slate-800" style={{ fontSize: fs(12) }}>
+                    <p className="truncate font-semibold text-foreground" style={{ fontSize: fs(12) }}>
                       {displayName}
                     </p>
-                    {displayName !== emp.name && <p className="truncate text-[10px] text-slate-500">{emp.name}</p>}
+                    {displayName !== emp.name && <p className="truncate text-[10px] text-muted-foreground">{emp.name}</p>}
                     <p className="truncate text-[10px] text-muted-foreground">
                       {emp.shopStats.length} ร้าน · {emp.shopStats.reduce((s, sh) => s + sh.tasks.length, 0)} งาน
                       {emp.totalUploaded > 0 ? ` · อัปโหลด ${emp.totalUploaded}` : ""}
@@ -265,7 +277,7 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
                   journalChecked: emp.totalChecked,
                   journalUpdated: emp.totalUpdated,
                 })}
-                <div className="flex items-center justify-center text-slate-400 group-hover:text-indigo-600">
+                <div className="flex items-center justify-center text-muted-foreground group-hover:text-info-strong">
                   {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </div>
               </div>
@@ -302,6 +314,137 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
   );
 }
 
+function MobileEmployeeCard({
+  employee,
+  expanded,
+  expandedShops,
+  onToggleEmployee,
+  onToggleShop,
+}: {
+  employee: KpiCombinedEmployee;
+  expanded: boolean;
+  expandedShops: Set<string>;
+  onToggleEmployee: (name: string) => void;
+  onToggleShop: (key: string) => void;
+}) {
+  const displayName = getDisplayName(employee.name);
+  const taskCount = employee.shopStats.reduce((total, shop) => total + shop.tasks.length, 0);
+
+  return (
+    <article className="bg-card px-3 py-3">
+      <button
+        type="button"
+        onClick={() => onToggleEmployee(employee.name)}
+        aria-expanded={expanded}
+        className="w-full rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition-colors hover:bg-secondary"
+      >
+        <div className="flex items-center gap-3">
+          <UserAvatar name={displayName} size={38} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+            {displayName !== employee.name && <p className="truncate text-[10px] text-muted-foreground">{employee.name}</p>}
+            <p className="mt-0.5 text-[10px] text-muted-foreground">{employee.shopStats.length} ร้าน · {taskCount} งาน</p>
+          </div>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </span>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <MobileMetric label="บิลที่รับผิดชอบ" value={employee.totalDocuments} />
+          <MobileMetric label="รอตรวจสอบ" value={employee.waitingVerify} />
+          <MobileMetric label="คงเหลือ" value={employee.remainingDocuments} />
+          <MobileMetric label="คีย์รวม" value={employee.totalJournals + employee.totalJournalsNoPhoto} />
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="ml-3 mt-2 space-y-2 border-l border-border pl-3">
+          {employee.shopStats.map((shop) => {
+            const shopKey = `${employee.name} ${shop.shopName}`;
+            return (
+              <MobileShopCard
+                key={shop.shopName}
+                shop={shop}
+                expanded={expandedShops.has(shopKey)}
+                onToggle={() => onToggleShop(shopKey)}
+              />
+            );
+          })}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function MobileMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="rounded-xl bg-secondary px-2.5 py-2">
+      <span className="block text-[9px] text-muted-foreground">{label}</span>
+      <span className="mt-0.5 block text-sm font-semibold tabular-nums text-foreground">{value.toLocaleString("th-TH")}</span>
+    </span>
+  );
+}
+
+function MobileShopCard({ shop, expanded, onToggle }: { shop: KpiCombinedShopStat; expanded: boolean; onToggle: () => void }) {
+  const expandable = shop.tasks.length > 0 || shop.orphanJournalEntries.length > 0;
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <button
+        type="button"
+        onClick={() => expandable && onToggle()}
+        disabled={!expandable}
+        aria-expanded={expandable ? expanded : undefined}
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left disabled:cursor-default"
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+          <Store className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-semibold text-foreground">{shop.shopName}</p>
+          <p className="mt-0.5 text-[9px] text-muted-foreground">
+            {shop.tasks.length} งาน · บิล {shop.totalDocuments.toLocaleString("th-TH")} · คงเหลือ {shop.remaining.toLocaleString("th-TH")}
+          </p>
+        </div>
+        {expandable && (expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />)}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border bg-secondary/60 p-2">
+          <div className="space-y-1.5">
+            {shop.tasks.map((task, index) => {
+              const status = STATUS_LABELS[task.status] ?? { label: `สถานะ ${task.status}`, color: KpiColors.mutedText };
+              const journalStats = journalStatsForTask(task);
+              return (
+                <div key={`${task.taskName}-${index}`} className="rounded-lg border border-border bg-card px-2.5 py-2">
+                  <div className="flex items-start gap-2">
+                    <BriefcaseBusiness className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[11px] font-medium text-foreground">{task.taskName}</p>
+                      <p className="mt-1 text-[9px] text-muted-foreground">
+                        บิล {task.totalDocument.toLocaleString("th-TH")} · บันทึกแล้ว {task.recorded.toLocaleString("th-TH")} · คีย์ {journalStats.journalCount.toLocaleString("th-TH")}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-semibold" style={{ backgroundColor: `${status.color}14`, borderColor: `${status.color}35`, color: status.color }}>
+                      {status.label}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {shop.orphanJournalEntries.length > 0 && (
+            <p className="mt-2 rounded-lg border border-dashed border-status-warning/40 bg-status-warning-soft px-2.5 py-2 text-[9px] font-medium text-status-warning-strong">
+              รายการไม่ผูกงาน {shop.orphanJournalEntries.length.toLocaleString("th-TH")} รายการ
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ShopRow({
   employeeName,
   shop,
@@ -324,24 +467,31 @@ function ShopRow({
   const expandable = shop.tasks.length > 0 || shop.orphanJournalEntries.length > 0;
 
   return (
-    <div className="border-b border-slate-200">
+    <div className="bg-card">
       <div
-        className={`grid border-b border-slate-100 bg-slate-50/80 ${expandable ? "cursor-pointer transition-colors hover:bg-slate-100" : ""}`}
-        style={{ gridTemplateColumns: GRID_TEMPLATE, minHeight: 44 }}
+        className={`group/shop grid border-b border-border bg-card ${expandable ? "cursor-pointer transition-colors hover:bg-secondary" : ""}`}
+        style={{ gridTemplateColumns: GRID_TEMPLATE, minHeight: 50 }}
         onClick={() => expandable && onToggleShop(shopKey)}
       >
-        <div className="flex min-w-0 items-center gap-2 px-3 py-1.5">
-          <span className="shrink-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
-            ร้าน
+        <div className="flex min-w-0 items-center gap-2.5 px-3 py-2">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm">
+            <Store className="h-3.5 w-3.5" />
           </span>
-          <span className="truncate font-medium text-slate-700" style={{ fontSize: fs(11.5) }}>
-            {shop.shopName}
-          </span>
-          {shop.journalRequiredDocs > 0 && (
-            <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700">
-              ต้องบันทึก {shop.journalRequiredDocs}
-            </span>
-          )}
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-semibold text-foreground" style={{ fontSize: fs(11.5) }}>
+                {shop.shopName}
+              </span>
+              {shop.journalRequiredDocs > 0 && (
+                <span className="shrink-0 rounded-full border border-border bg-card px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                  ต้องบันทึก {shop.journalRequiredDocs}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 truncate text-[9px] text-muted-foreground">
+              {shop.tasks.length} งาน{shop.orphanJournalEntries.length > 0 ? ` · ไม่ผูกงาน ${shop.orphanJournalEntries.length} รายการ` : ""}
+            </p>
+          </div>
         </div>
         {numCell(shop.totalDocuments)}
         {numericColumns({
@@ -359,13 +509,13 @@ function ShopRow({
           journalChecked: shop.journalChecked,
           journalUpdated: shop.journalUpdated,
         })}
-        <div className="flex items-center justify-center">
-          {expandable ? isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" /> : null}
+        <div className="flex items-center justify-center text-muted-foreground group-hover/shop:text-foreground">
+          {expandable ? isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" /> : null}
         </div>
       </div>
 
       {isExpanded && (
-        <div className="border-l-2 border-l-indigo-100 bg-white">
+        <div className="border-l border-l-slate-200 bg-card">
           {shop.tasks.map((task, i) => (
             <TaskRow
               key={`${shopKey}#${i}`}
@@ -409,25 +559,23 @@ function TaskRow({
   return (
     <div>
       <div
-        className={`grid border-b border-slate-100 bg-white ${expandable ? "cursor-pointer transition-colors hover:bg-indigo-50/30" : ""}`}
-        style={{ gridTemplateColumns: GRID_TEMPLATE, minHeight: 38 }}
+        className={`group/task grid border-b border-border bg-card ${expandable ? "cursor-pointer transition-colors hover:bg-secondary" : ""}`}
+        style={{ gridTemplateColumns: GRID_TEMPLATE, minHeight: 48 }}
         onClick={() => expandable && onToggle(taskKey)}
       >
-        <div className="flex min-w-0 items-center gap-2 px-3 py-1.5">
-          <span className="w-3.5 shrink-0 text-muted-foreground">
-            {expandable ? isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" /> : null}
+        <div className="relative flex min-w-0 items-center gap-2.5 py-2 pl-6 pr-3">
+          <span className="absolute left-2.5 top-0 h-1/2 w-3 border-b border-l border-slate-300" aria-hidden="true" />
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground group-hover/task:bg-accent group-hover/task:text-info-strong">
+            <BriefcaseBusiness className="h-3.5 w-3.5" />
           </span>
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
-                งาน
-              </span>
-              <span className="truncate font-medium" style={{ fontSize: fs(11.5) }}>
+              <span className="truncate font-semibold text-foreground" style={{ fontSize: fs(11.5) }}>
                 {task.taskName}
               </span>
               <span
-                className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-white"
-                style={{ backgroundColor: status.color }}
+                className="shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold"
+                style={{ backgroundColor: `${status.color}14`, borderColor: `${status.color}35`, color: status.color }}
               >
                 {status.label}
               </span>
@@ -464,7 +612,7 @@ function TaskRow({
           journalChecked: journalStats.journalChecked,
           journalUpdated: journalStats.journalUpdated,
         })}
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center text-muted-foreground group-hover/task:text-info-strong">
           {expandable ? isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" /> : null}
         </div>
       </div>
@@ -482,11 +630,14 @@ function TaskRow({
 
 function JournalDetailPanel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
+    <div className="border-b border-border bg-secondary/80 px-6 py-3">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+        <p className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-info" />
+          {title}
+        </p>
       </div>
-      <div className="space-y-1.5">{children}</div>
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{children}</div>
     </div>
   );
 }
@@ -505,7 +656,7 @@ function Chip({ icon: Icon, label, color }: { icon?: typeof User; label: string;
 
 function JournalEntryCard({ journal, fs }: { journal: KpiCombinedTaskItem["journalEntries"][number]; fs: (n: number) => string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+    <div className="rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm">
       <p className="font-medium" style={{ fontSize: fs(11) }}>
         {journal.docNo} <span className="text-muted-foreground">· {journal.accountName}</span>
       </p>
@@ -527,15 +678,15 @@ function OrphanJournalCard({ journal, fs }: { journal: KpiCombinedTaskItem["jour
       ? "มีเอกสารอ้างอิงแล้ว แต่ยังไม่พบงานที่ตรงกัน"
       : "เชื่อมกับงานแล้ว";
   return (
-    <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-3 py-2">
+    <div className="rounded-xl border border-dashed border-status-warning/40 bg-status-warning-soft px-3 py-2.5">
       <p className="font-medium" style={{ fontSize: fs(11) }}>
         {journal.docNo} <span className="text-muted-foreground">· {journal.accountName}</span>
       </p>
-      <p className="text-[10px] text-[#B45309]">{reason}</p>
+      <p className="text-[10px] text-status-warning-strong">{reason}</p>
       <div className="hidden">
-        <span className="w-fit rounded-md bg-[#FFFBEB] px-2 py-1 text-[10px] font-bold text-[#B45309]">ไม่ผูกงาน</span>
-        <p className="min-w-0 flex-1 text-[10px] font-medium text-[#B45309] md:px-3">{reason}</p>
-        <div className="min-w-0 text-[10px] text-[#64748B] md:text-right">
+        <span className="w-fit rounded-md bg-status-warning-soft px-2 py-1 text-[10px] font-bold text-status-warning-strong">ไม่ผูกงาน</span>
+        <p className="min-w-0 flex-1 text-[10px] font-medium text-status-warning-strong md:px-3">{reason}</p>
+        <div className="min-w-0 text-[10px] text-muted-foreground md:text-right">
           <p className="truncate">{getDisplayName(journal.createdBy)}</p>
           <p>{journal.keyedAt ? journal.keyedAt.toLocaleString("th-TH") : "-"}</p>
         </div>

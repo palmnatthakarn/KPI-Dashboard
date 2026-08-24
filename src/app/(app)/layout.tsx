@@ -19,7 +19,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    checkAuth();
+    void checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

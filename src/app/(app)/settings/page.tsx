@@ -16,16 +16,16 @@ export default function SettingsPage() {
         <div className="overflow-hidden rounded-2xl glass-panel">
           <Link
             href="/settings/employee-mapping"
-            className="flex items-center gap-4 p-4 hover:bg-white/70"
+            className="flex items-center gap-4 p-4 hover:bg-card/70"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-white/70">
-              <Users className="h-[22px] w-[22px] text-[#0F172A]" />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card/70">
+              <Users className="h-[22px] w-[22px] text-foreground" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-semibold text-[#1E293B]">จัดการชื่อพนักงาน</p>
-              <p className="text-xs text-[#64748B]">แก้ไขหรือแทนที่ชื่อพนักงานที่แสดงในรายงาน</p>
+              <p className="text-[15px] font-semibold text-foreground">จัดการชื่อพนักงาน</p>
+              <p className="text-xs text-muted-foreground">แก้ไขหรือแทนที่ชื่อพนักงานที่แสดงในรายงาน</p>
             </div>
-            <ChevronRight className="h-5 w-5 shrink-0 text-[#CBD5E1]" />
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/60" />
           </Link>
         </div>
       </div>

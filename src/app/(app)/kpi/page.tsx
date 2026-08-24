@@ -8,6 +8,7 @@ import { KpiFilterBar } from "@/components/kpi/kpi-filter-bar";
 import { KpiTable } from "@/components/kpi/kpi-table";
 import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
 import { useAuthStore } from "@/store/auth-store";
+import { formatThaiDate } from "@/lib/utils";
 
 const FONT_SCALES = [1, 1.2, 1.4];
 
@@ -67,7 +68,7 @@ export default function KpiPage() {
           <h1 className="text-lg font-semibold">KPI</h1>
           <p className="text-sm text-muted-foreground">สรุปผลงานพนักงานตามงาน (task) และการบันทึกบัญชี (GL)</p>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-[#E5E7EB] bg-white p-1">
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-1">
           {FONT_SCALES.map((s) => (
             <button
               key={s}
@@ -99,6 +100,13 @@ export default function KpiPage() {
 
       {hasSearched ? (
         <>
+          {/* Same caption pattern as Overview's PageHeader — lets the two
+              pages' document totals be checked against each other directly
+              instead of trusting that both date pickers happen to agree. */}
+          <p className="text-xs text-muted-foreground">
+            ข้อมูลสถิติ ณ วันที่ {formatThaiDate(filters.startDate)} - {formatThaiDate(filters.endDate)}
+          </p>
+
           <KpiSummaryCards
             totalDocuments={summary.totalDocuments}
             totalUploaded={summary.totalUploaded}
@@ -122,7 +130,7 @@ export default function KpiPage() {
         </span>
           </div>
 
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+          <div className="rounded-2xl border border-border bg-card shadow-sm">
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-24 text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -140,7 +148,7 @@ export default function KpiPage() {
         ) : (
           <>
             {incompleteShops.length > 0 && (
-              <div className="flex items-center gap-2 border-b border-[#F1F5F9] bg-[#FFFBEB] px-4 py-2 text-[11px] text-[#B45309]">
+              <div className="flex items-center gap-2 border-b border-[#F1F5F9] bg-status-warning-soft px-4 py-2 text-[11px] text-status-warning-strong">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 โหลดข้อมูลไม่ครบสำหรับร้าน: {incompleteShops.join(", ")} — ลองกดค้นหาอีกครั้ง
               </div>
@@ -151,11 +159,11 @@ export default function KpiPage() {
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E2E8F0] bg-white px-6 py-12 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card px-6 py-12 text-center">
           <div className="mb-4 rounded-full bg-blue-50 p-4">
             <Search className="h-7 w-7 text-blue-500" />
           </div>
-          <p className="text-base font-extrabold text-slate-800">เลือกช่วงวันที่แล้วกดค้นหาเพื่อดู KPI</p>
+          <p className="text-base font-extrabold text-foreground">เลือกช่วงวันที่แล้วกดค้นหาเพื่อดู KPI</p>
           <p className="mt-1.5 text-xs text-muted-foreground">ระบบจะโหลดเฉพาะข้อมูลตามตัวกรองที่เลือก เพื่อให้เปิดหน้าได้เร็วขึ้น</p>
         </div>
       )}

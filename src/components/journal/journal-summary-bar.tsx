@@ -3,10 +3,10 @@ import { ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 /** Ported from JournalSummaryBar (journal_summary_bar.dart). */
 export function JournalSummaryBar({ totalDebit, totalCredit }: { totalDebit: string; totalCredit: string }) {
   return (
-    <div className="flex items-center justify-around gap-3 border-t border-border bg-white px-4 py-3">
-      <SummaryItem label="เดบิต" value={totalDebit} color="#3B82F6" Icon={ArrowUpCircle} />
+    <div className="flex items-center justify-around gap-3 border-t border-border bg-card px-4 py-3">
+      <SummaryItem label="เดบิต" value={totalDebit} className="text-status-safe-strong" Icon={ArrowUpCircle} />
       <div className="h-8 w-px bg-border" />
-      <SummaryItem label="เครดิต" value={totalCredit} color="#8B5CF6" Icon={ArrowDownCircle} />
+      <SummaryItem label="เครดิต" value={totalCredit} className="text-info-strong" Icon={ArrowDownCircle} />
     </div>
   );
 }
@@ -14,22 +14,21 @@ export function JournalSummaryBar({ totalDebit, totalCredit }: { totalDebit: str
 function SummaryItem({
   label,
   value,
-  color,
+  className,
   Icon,
 }: {
   label: string;
   value: string;
-  color: string;
+  /** Token-based text color — matches the debit/credit chips in the table. */
+  className: string;
   Icon: typeof ArrowUpCircle;
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className="h-5 w-5" style={{ color }} />
+      <Icon className={`h-5 w-5 ${className}`} />
       <div>
-        <p className="text-[11px] font-medium" style={{ color }}>
-          {label}
-        </p>
-        <p className="text-sm font-extrabold text-foreground">{value}</p>
+        <p className={`text-[11px] font-medium ${className}`}>{label}</p>
+        <p className="text-sm font-extrabold text-foreground tabular-nums">{value}</p>
       </div>
     </div>
   );

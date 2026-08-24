@@ -3,10 +3,25 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Theme tokens. Every color the UI paints with should resolve through one of
+   * these — that is what lets the dark theme exist at all.
+   *
+   * The `--status-*` triples mirror `src/lib/design/tokens.ts`, which holds the
+   * same LIGHT values as hex for the few places that need an inline style
+   * (chart fills, SVG, PDF export). If you change a light value in one place,
+   * change it in the other.
+   *
+   *   base   decorative: icons, chart fills, bar segments. Never text.
+   *   strong text on a `soft` background. Contrast-checked in both themes.
+   *   soft   tinted background for badges and pills.
+   */
   :root {
     --background: 60 10% 95%;
     --foreground: 222 47% 11%;
-    --card: 0 0% 100% / 0.72;
+    /* No alpha here: Tailwind's `/80` modifier appends its own, and a token
+       that already carries one produces invalid `hsl(h s l / a / a)`. */
+    --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --primary: 222 47% 11%;
     --primary-foreground: 210 40% 98%;
@@ -14,7 +29,7 @@
     --secondary-foreground: 222 47% 11%;
     --muted: 210 20% 96%;
     --muted-foreground: 215 16% 43%;
-    --accent: 210 20% 96%;
+    --accent: 210 20% 94%;
     --accent-foreground: 222 47% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -22,38 +37,84 @@
     --input: 214 24% 88%;
     --ring: 222 47% 11%;
     --radius: 0.5rem;
+
+    --status-safe: 142 76% 36%;
+    --status-safe-strong: 142 72% 29%;
+    --status-safe-soft: 141 79% 93%;
+
+    --status-warning: 32 95% 44%;
+    --status-warning-strong: 26 90% 37%;
+    --status-warning-soft: 48 96% 89%;
+
+    --status-exceeded: 0 72% 51%;
+    --status-exceeded-strong: 0 74% 42%;
+    --status-exceeded-soft: 0 93% 94%;
+
+    --info: 221 83% 53%;
+    --info-strong: 224 76% 48%;
+    --info-soft: 214 95% 93%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 222 24% 9%;
+    --foreground: 210 20% 96%;
+    /* Cards sit slightly ABOVE the page in dark mode — elevation reads as
+       lightness here, the inverse of the shadow-based cue used in light mode. */
+    --card: 222 20% 13%;
+    --card-foreground: 210 20% 96%;
+    --primary: 210 20% 96%;
+    --primary-foreground: 222 24% 11%;
+    --secondary: 217 19% 18%;
+    --secondary-foreground: 210 20% 96%;
+    --muted: 217 19% 18%;
+    --muted-foreground: 215 16% 68%;
+    --accent: 217 19% 24%;
+    --accent-foreground: 210 20% 96%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 217 19% 24%;
+    --input: 217 19% 24%;
+    --ring: 213 27% 70%;
+
+    /* Inverted pairing: `soft` becomes a deep tint and `strong` a light text
+       color, so the same badge markup stays readable without per-theme markup. */
+    --status-safe: 142 60% 45%;
+    --status-safe-strong: 141 65% 68%;
+    --status-safe-soft: 142 38% 16%;
+
+    --status-warning: 38 85% 52%;
+    --status-warning-strong: 43 92% 68%;
+    --status-warning-soft: 30 40% 17%;
+
+    --status-exceeded: 0 70% 58%;
+    --status-exceeded-strong: 0 85% 75%;
+    --status-exceeded-soft: 0 40% 19%;
+
+    --info: 217 85% 62%;
+    --info-strong: 213 92% 75%;
+    --info-soft: 220 45% 21%;
   }
 
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground antialiased;
     min-height: 100vh;
+  }
+
+  /* Subtle page wash. Kept as a gradient in light mode (the original look) and
+     flattened in dark, where a light-source gradient reads as a smudge. */
+  body {
     background:
       radial-gradient(circle at 8% 4%, rgba(255, 255, 255, 0.96), transparent 30%),
       radial-gradient(circle at 94% 8%, rgba(15, 23, 42, 0.08), transparent 24%),
       linear-gradient(135deg, #f7f7f4 0%, #f1f1ee 46%, #e9e9e4 100%);
+  }
+
+  .dark body {
+    background: hsl(var(--background));
   }
 }
 
@@ -63,98 +124,6 @@
   }
 
   .glass-control {
-    @apply border border-border bg-white/70 shadow-sm backdrop-blur;
+    @apply border border-border bg-card/70 shadow-sm backdrop-blur;
   }
-}
-
-@keyframes blob {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.95);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-@keyframes floatCard {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.animate-blob-1 {
-  animation: blob 8s infinite ease-in-out;
-}
-
-.animate-blob-2 {
-  animation: blob 10s infinite ease-in-out 2s;
-}
-
-.animate-blob-3 {
-  animation: blob 12s infinite ease-in-out 4s;
-}
-
-.animate-float-card-1 {
-  animation: floatCard 5s ease-in-out infinite;
-}
-
-.animate-float-card-2 {
-  animation: floatCard 6s ease-in-out infinite 1.5s;
-}
-
-.animate-float-card-3 {
-  animation: floatCard 5.5s ease-in-out infinite 3s;
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animation-delay-100 {
-  animation-delay: 100ms;
-}
-
-.animation-delay-200 {
-  animation-delay: 200ms;
-}
-
-.animation-delay-300 {
-  animation-delay: 300ms;
-}
-
-.animation-delay-400 {
-  animation-delay: 400ms;
-}
-
-.animation-delay-500 {
-  animation-delay: 500ms;
 }

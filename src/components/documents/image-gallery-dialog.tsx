@@ -105,7 +105,7 @@ export function ImageGalleryDialog({ shopId, shopName, onClose }: { shopId: stri
                         <Icon className="h-4 w-4 shrink-0" />
                         <span className="flex-1 truncate">{cat}</span>
                         <span
-                          className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-white/20" : "bg-secondary text-secondary-foreground"}`}
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-card/25" : "bg-secondary text-secondary-foreground"}`}
                         >
                           {count}
                         </span>

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
+import { ThemeToggle } from "@/components/common/theme-toggle";
 
 /**
  * Ported 1:1 from AppSidebar.menuItems in components/app_sidebar.dart.
@@ -81,8 +82,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
             aria-label={collapsed ? "ขยายเมนู" : "VAT Dashboard"}
             title={collapsed ? "ขยายเมนู" : undefined}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0F172A] to-[#475569] font-semibold text-white shadow-md shadow-slate-900/10 transition",
-              collapsed ? "cursor-pointer hover:scale-105 hover:shadow-slate-900/20" : "cursor-default"
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 font-semibold text-primary-foreground shadow-md transition",
+              collapsed ? "cursor-pointer hover:scale-105 hover:shadow-lg" : "cursor-default"
             )}
           >
             V
@@ -97,7 +98,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           <button
             onClick={onToggleCollapse}
             aria-label={collapsed ? "ขยายเมนู" : "พับเมนู"}
-            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-white/70 text-muted-foreground transition hover:border-[#0F172A] hover:bg-white hover:text-[#0F172A] md:flex"
+            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:border-foreground hover:bg-accent hover:text-foreground md:flex"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
@@ -126,12 +127,12 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                       className={cn(
                         "relative flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
                         itemActive
-                          ? "bg-[#0F172A] font-medium text-white shadow-sm shadow-slate-900/10"
-                          : "text-muted-foreground hover:bg-white/70 hover:text-[#0F172A]"
+                          ? "bg-primary font-medium text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
                       )}
                     >
                       {itemActive && (
-                        <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-white/80" />
+                        <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-primary-foreground/80" />
                       )}
                       <Icon className="h-5 w-5 shrink-0" />
                       {!collapsed && <span className="truncate">{item.title}</span>}
@@ -142,8 +143,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                         onClick={() => setReportsOpen((open) => !open)}
                         aria-label={reportsOpen ? "พับเมนู Reports" : "ขยายเมนู Reports"}
                         className={cn(
-                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/70 hover:text-[#0F172A]",
-                          itemActive && "text-[#0F172A]"
+                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                          itemActive && "text-foreground"
                         )}
                       >
                         {reportsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -164,12 +165,12 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                             className={cn(
                               "relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
                               childActive
-                                ? "bg-[#0F172A] font-medium text-white shadow-sm shadow-slate-900/10"
-                                : "text-muted-foreground hover:bg-white/70 hover:text-[#0F172A]"
+                                ? "bg-primary font-medium text-primary-foreground shadow-sm"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
                             )}
                           >
                             {childActive && (
-                              <span className="absolute left-0 top-1/2 h-3.5 w-1 -translate-y-1/2 rounded-r-full bg-white/80" />
+                              <span className="absolute left-0 top-1/2 h-3.5 w-1 -translate-y-1/2 rounded-r-full bg-primary-foreground/80" />
                             )}
                             <ChildIcon className="h-[18px] w-[18px] shrink-0" />
                             <span className="truncate">{child.title}</span>
@@ -191,12 +192,12 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                 className={cn(
                   "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
                   active
-                    ? "bg-[#0F172A] font-medium text-white shadow-sm shadow-slate-900/10"
-                    : "text-muted-foreground hover:bg-white/70 hover:text-[#0F172A]"
+                    ? "bg-primary font-medium text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-white/80" />
+                  <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-primary-foreground/80" />
                 )}
                 <Icon className="h-5 w-5 shrink-0" />
                 {!collapsed && <span className="truncate">{item.title}</span>}
@@ -206,33 +207,63 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         </nav>
 
         <div className="border-t border-border p-3">
+          <div className={cn("mb-2", collapsed && "flex justify-center")}>
+            <ThemeToggle collapsed={collapsed} />
+          </div>
+
           {username && (
-            <div className={cn("mb-1 flex items-center gap-2.5 px-1 py-2", collapsed && "justify-center px-0")}>
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#0F172A] to-[#475569] text-xs font-semibold text-white">
+            <div
+              className={cn(
+                "flex items-center gap-2.5 px-1 py-2",
+                collapsed && "flex-col justify-center gap-1.5 px-0"
+              )}
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-xs font-semibold text-primary-foreground">
                 {username.charAt(0).toUpperCase()}
               </div>
               {!collapsed && (
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium text-foreground">{username}</p>
                   <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#22C55E]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-status-safe" />
                     ออนไลน์
                   </p>
                 </div>
               )}
+              <div className="group relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  aria-label="ออกจากระบบ"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+                <span
+                  role="tooltip"
+                  className={cn(
+                    "pointer-events-none absolute z-[60] whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-[11px] font-medium text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
+                    collapsed
+                      ? "bottom-1/2 left-[calc(100%+8px)] translate-y-1/2"
+                      : "bottom-[calc(100%+6px)] right-0"
+                  )}
+                >
+                  ออกจากระบบ
+                </span>
+              </div>
             </div>
           )}
-          <button
-            onClick={() => logout()}
-            title={collapsed ? "ออกจากระบบ" : undefined}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive",
-              collapsed && "justify-center"
-            )}
-          >
-            <LogOut className="h-5 w-5 shrink-0" />
-            {!collapsed && <span>ออกจากระบบ</span>}
-          </button>
+          {!username && (
+            <button
+              type="button"
+              onClick={() => logout()}
+              aria-label="ออกจากระบบ"
+              title="ออกจากระบบ"
+              className="flex h-8 w-full items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </aside>
     </>

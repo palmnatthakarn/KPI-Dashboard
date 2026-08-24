@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import * as authService from "@/lib/auth/auth-service";
-import { getToken, isTokenExpiredOrExpiring, getUsername } from "@/lib/auth/token-storage";
+import {
+  clearToken,
+  getToken,
+  getUsername,
+  isTokenExpiredOrExpiring,
+} from "@/lib/auth/token-storage";
 
 /**
  * Zustand equivalent of blocs/auth/auth_bloc.dart (events/states collapsed
@@ -52,18 +57,33 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   },
 
   checkAuth: async () => {
-    const token = getToken();
-    if (!token) {
-      set({ status: "unauthenticated" });
-      return;
-    }
-    if (isTokenExpiredOrExpiring()) {
-      const refreshed = await authService.refreshAccessToken();
-      if (!refreshed) {
-        set({ status: "unauthenticated", username: null });
+    set({ status: "authenticating", error: null });
+
+    try {
+      const token = getToken();
+      if (!token) {
+        set({ status: "unauthenticated", username: null, error: null });
         return;
       }
+
+      if (isTokenExpiredOrExpiring()) {
+        const refreshed = await authService.refreshAccessToken();
+        if (!refreshed) {
+          clearToken();
+          set({ status: "unauthenticated", username: null, error: null });
+          return;
+        }
+      }
+
+      set({ status: "authenticated", username: getUsername(), error: null });
+    } catch (error) {
+      console.error("Unable to restore authentication session", error);
+      clearToken();
+      set({
+        status: "unauthenticated",
+        username: null,
+        error: "ไม่สามารถตรวจสอบสิทธิ์ได้ กรุณาเข้าสู่ระบบใหม่",
+      });
     }
-    set({ status: "authenticated", username: getUsername() });
   },
 }));

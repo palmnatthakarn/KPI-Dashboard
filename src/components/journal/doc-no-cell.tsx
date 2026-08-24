@@ -16,7 +16,7 @@ export function DocNoCell({ docNo, onCopy }: { docNo: string; onCopy?: (docNo: s
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const color = copied ? "text-emerald-600" : "text-indigo-600";
+  const color = copied ? "text-emerald-600" : "text-info-strong";
 
   return (
     <button

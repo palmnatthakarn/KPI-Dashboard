@@ -32,6 +32,12 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", left: 28, right: 28, bottom: 12, flexDirection: "row", justifyContent: "space-between", fontSize: 7, color: "#64748b" },
 });
 
+function formatPdfCell(cell: string, header: boolean): string {
+  if (header || !/^-?\d+(?:\.\d+)?$/.test(cell.trim())) return cell;
+  const value = Number(cell);
+  return Number.isFinite(value) ? value.toLocaleString("en-US", { maximumFractionDigits: 20 }) : cell;
+}
+
 function TableRow({
   cells,
   header = false,
@@ -45,7 +51,9 @@ function TableRow({
     <View style={[styles.row, header ? styles.headerRow : {}, highlighted ? styles.highlightRow : {}]} wrap={false}>
       {cells.map((cell, index) => (
         <View key={index} style={styles.cell}>
-          <Text style={header ? styles.headerText : highlighted ? styles.highlightText : {}}>{cell || "-"}</Text>
+          <Text style={header ? styles.headerText : highlighted ? styles.highlightText : {}}>
+            {cell ? formatPdfCell(cell, header) : "-"}
+          </Text>
         </View>
       ))}
     </View>

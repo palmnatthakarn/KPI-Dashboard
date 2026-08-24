@@ -128,25 +128,25 @@ function JournalPageContent() {
   }
 
   return (
-    <div className="-m-4 flex min-h-[calc(100vh-4rem)] flex-col bg-[#F8FAFC] sm:-m-6">
+    <div className="-m-4 flex min-h-[calc(100vh-4rem)] flex-col bg-secondary sm:-m-6">
       {/* App bar */}
-      <div className="flex items-center gap-4 border-b border-[#E5E7EB] bg-white px-3 py-3">
+      <div className="flex items-center gap-4 border-b border-border bg-card px-3 py-3">
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded-xl border border-[#E5E7EB] p-2 text-[#6B7280] hover:bg-accent"
+          className="rounded-xl border border-border p-2 text-muted-foreground hover:bg-accent"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="rounded-xl bg-gradient-to-br from-[#3B82F6] to-[#2563EB] p-2.5 shadow-sm">
+          <div className="rounded-xl bg-info p-2.5 shadow-sm">
             <Wallet className="h-5 w-5 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-[15px] font-extrabold tracking-tight text-[#111827]">Journal</p>
+            <p className="text-[15px] font-extrabold tracking-tight text-foreground">Journal</p>
             <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10B981]" />
-              <p className="truncate text-[11px] font-medium text-[#6B7280]">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-status-safe" />
+              <p className="truncate text-[11px] font-medium text-muted-foreground">
                 สาขา: {branchSync || "-"} • {filtered.length} รายการ
               </p>
             </div>
@@ -155,13 +155,13 @@ function JournalPageContent() {
         <div className="ml-auto">
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-              <button type="button" className="rounded-xl bg-[#F3F4F6] p-2.5 text-[#374151] hover:bg-accent" title="ส่งออกข้อมูล">
+              <button type="button" className="rounded-xl bg-secondary p-2.5 text-foreground hover:bg-accent" title="ส่งออกข้อมูล">
                 <Download className="h-5 w-5" />
               </button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
-              <DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-[220px] rounded-2xl border border-border bg-white p-2 shadow-lg">
-                <p className="px-3 py-2 text-sm font-bold text-[#111827]">ส่งออกข้อมูล</p>
+              <DropdownMenu.Content align="end" sideOffset={8} className="z-50 min-w-[220px] rounded-2xl border border-border bg-card p-2 shadow-lg">
+                <p className="px-3 py-2 text-sm font-bold text-foreground">ส่งออกข้อมูล</p>
                 <DropdownMenu.Separator className="my-1 h-px bg-border" />
                 <ExportItem icon={TableIcon} color="#10B981" title="Excel (.xlsx)" subtitle="เหมาะสำหรับนำไปคำนวณต่อ" onClick={() => handleExport("Excel")} />
                 <ExportItem icon={FileText} color="#EF4444" title="PDF Document" subtitle="เอกสารสำหรับการพิมพ์" onClick={() => handleExport("PDF")} />
@@ -202,7 +202,7 @@ function JournalPageContent() {
             onViewToggle={setIsChartView}
           />
 
-          <div className="mx-3 my-3 flex-1 overflow-hidden rounded-[20px] border border-[#E5E7EB] bg-white shadow-sm">
+          <div className="mx-3 my-3 flex-1 overflow-hidden rounded-[20px] border border-border bg-card shadow-sm">
             {filtered.length === 0 ? (
               <JournalEmptyState title="ไม่พบรายการ" subtitle="ลองเปลี่ยนตัวกรองหรือเคลียร์คำค้นหา" />
             ) : isChartView ? (
@@ -233,7 +233,7 @@ function JournalPageContent() {
         <button
           type="button"
           onClick={handleReset}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-[#3B82F6] px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_12px_-2px_rgba(59,130,246,0.3)] hover:brightness-105"
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-info px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_12px_-2px_rgba(59,130,246,0.3)] hover:brightness-105"
         >
           <RefreshCw className="h-4 w-4" />
           รีเซ็ต

@@ -48,8 +48,8 @@ export function JournalToolbar({
   return (
     <div className="mx-3 space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-[38px] flex-1 items-center rounded-xl border border-[#E5E7EB] bg-white px-4 shadow-sm">
-          <Search className="h-[18px] w-[18px] shrink-0 text-[#6B7280]" />
+        <div className="flex h-[38px] flex-1 items-center rounded-xl border border-border bg-card px-4 shadow-sm">
+          <Search className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
           <input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -63,18 +63,18 @@ export function JournalToolbar({
           )}
         </div>
 
-        <div className="flex items-center gap-1 rounded-xl border border-[#E5E7EB] bg-white p-1 shadow-sm">
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-sm">
           <button
             type="button"
             onClick={() => onViewToggle(false)}
-            className={`rounded-lg p-2 ${!isChartView ? "bg-[#EFF6FF] text-[#3B82F6]" : "text-[#6B7280]"}`}
+            className={`rounded-lg p-2 ${!isChartView ? "bg-[#EFF6FF] text-info-strong" : "text-muted-foreground"}`}
           >
             <TableIcon className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => onViewToggle(true)}
-            className={`rounded-lg p-2 ${isChartView ? "bg-[#EFF6FF] text-[#3B82F6]" : "text-[#6B7280]"}`}
+            className={`rounded-lg p-2 ${isChartView ? "bg-[#EFF6FF] text-info-strong" : "text-muted-foreground"}`}
           >
             <BarChart3 className="h-4 w-4" />
           </button>
@@ -109,7 +109,7 @@ export function JournalToolbar({
           <select
             value={dateFilter}
             onChange={(e) => onDateFilterChange(e.target.value as DateFilter)}
-            className="appearance-none rounded-full border border-[#E5E7EB] bg-white py-1.5 pl-8 pr-7 text-[11px] font-semibold text-foreground shadow-sm focus:outline-none"
+            className="appearance-none rounded-full border border-border bg-card py-1.5 pl-8 pr-7 text-[11px] font-semibold text-foreground shadow-sm focus:outline-none"
           >
             {DATE_FILTERS.map(([value, label]) => (
               <option key={value} value={value}>
@@ -117,8 +117,8 @@ export function JournalToolbar({
               </option>
             ))}
           </select>
-          <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#3B82F6]" />
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6B7280]" />
+          <Calendar className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-info-strong" />
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         </div>
 
         {dateFilter === "CUSTOM" && (

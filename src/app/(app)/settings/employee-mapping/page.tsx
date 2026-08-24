@@ -133,14 +133,14 @@ export default function EmployeeMappingPage() {
           <NextLink
             href="/settings"
             aria-label="กลับไปหน้าตั้งค่า"
-            className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white text-[#64748B] hover:bg-accent"
+            className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-accent"
           >
             <ArrowLeft className="h-4 w-4" />
           </NextLink>
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Employee Alias</p>
-            <h1 className="mt-0.5 text-lg font-semibold text-[#0F172A]">จัดการชื่อพนักงาน</h1>
-            <p className="mt-1 text-xs text-[#64748B]">
+            <h1 className="mt-0.5 text-lg font-semibold text-foreground">จัดการชื่อพนักงาน</h1>
+            <p className="mt-1 text-xs text-muted-foreground">
               จัดชื่อแสดงผลสำหรับ KPI และรายงาน โดยยังเก็บ Email ไว้เป็นตัวอ้างอิง
             </p>
           </div>
@@ -153,7 +153,7 @@ export default function EmployeeMappingPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#E2E8F0] bg-white p-3">
+      <div className="rounded-2xl border border-border bg-card p-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="relative w-full xl:max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -168,7 +168,7 @@ export default function EmployeeMappingPage() {
                 type="button"
                 onClick={() => setSearch("")}
                 aria-label="ล้างคำค้นหา"
-                className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-white hover:text-[#0F172A]"
+                className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-card hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -191,34 +191,34 @@ export default function EmployeeMappingPage() {
             type="button"
             onClick={handleExportPdf}
             disabled={isExporting || visibleCount === 0}
-            className="inline-flex h-10 w-fit shrink-0 items-center justify-center gap-2 rounded-lg border border-[#E2E8F0] bg-white px-3 text-xs font-semibold text-[#0F172A] shadow-sm transition hover:bg-[#0F172A] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex h-10 w-fit shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-sm transition hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45"
           >
             {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
             Export PDF
           </button>
 
           <div className="flex min-w-[220px] items-center gap-3 xl:ml-auto">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#E2E8F0]">
-              <div className="h-full rounded-full bg-[#0F172A]" style={{ width: `${mappedPercent}%` }} />
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${mappedPercent}%` }} />
             </div>
-            <span className="text-xs font-semibold text-[#475569]">{mappedPercent}%</span>
+            <span className="text-xs font-semibold text-muted-foreground">{mappedPercent}%</span>
           </div>
         </div>
       </div>
 
       <section className="overflow-hidden rounded-2xl glass-panel">
-        <div className="flex flex-col gap-2 border-b border-[#E2E8F0] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-[#0F172A]">รายชื่อพนักงาน</h2>
-            <p className="mt-0.5 text-xs text-[#64748B]">แสดง {visibleCount.toLocaleString("th-TH")} รายการจากตัวกรองปัจจุบัน</p>
+            <h2 className="text-sm font-semibold text-foreground">รายชื่อพนักงาน</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">แสดง {visibleCount.toLocaleString("th-TH")} รายการจากตัวกรองปัจจุบัน</p>
           </div>
-          <span className="w-fit rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-[#475569]">
+          <span className="w-fit rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-muted-foreground">
             โหมด {tabs.find((item) => item.value === tab)?.label}
           </span>
         </div>
 
         {syncStatus === "loading" && isEmpty ? (
-          <div className="flex items-center justify-center gap-2 p-10 text-sm text-[#64748B]">
+          <div className="flex items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> กำลังโหลดรายชื่อจาก Firebase...
           </div>
         ) : syncStatus === "error" && isEmpty ? (
@@ -306,12 +306,12 @@ export default function EmployeeMappingPage() {
 
 function MetricCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
-      <div className="flex items-center gap-2 text-[#64748B]">
+    <div className="rounded-xl border border-border bg-card p-3">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Icon className="h-4 w-4" />
         <span className="text-[11px] font-medium">{label}</span>
       </div>
-      <p className="mt-2 text-lg font-semibold text-[#0F172A]">{value.toLocaleString("th-TH")}</p>
+      <p className="mt-2 text-lg font-semibold text-foreground">{value.toLocaleString("th-TH")}</p>
     </div>
   );
 }
@@ -323,11 +323,11 @@ function FilterButton({ active, onClick, label, count }: { active: boolean; onCl
       onClick={onClick}
       className={cn(
         "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition",
-        active ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-transparent bg-secondary text-[#64748B] hover:text-[#0F172A]"
+        active ? "border-primary bg-primary text-primary-foreground" : "border-transparent bg-secondary text-muted-foreground hover:text-foreground"
       )}
     >
       <span>{label}</span>
-      <span className={cn("rounded px-1.5 py-0.5 text-[11px]", active ? "bg-white/15 text-white" : "bg-[#E2E8F0] text-[#64748B]")}>
+      <span className={cn("rounded px-1.5 py-0.5 text-[11px]", active ? "bg-primary-foreground/15 text-primary-foreground" : "bg-secondary text-muted-foreground")}>
         {count.toLocaleString("th-TH")}
       </span>
     </button>
@@ -336,14 +336,14 @@ function FilterButton({ active, onClick, label, count }: { active: boolean; onCl
 
 function EmployeeSection({ title, count, children }: { title: string; count: number; children: ReactNode }) {
   return (
-    <section className="bg-white/26">
-      <div className="flex items-center justify-between bg-white/42 px-4 py-2.5 backdrop-blur">
-        <h3 className="text-xs font-bold uppercase tracking-wide text-[#334155]">{title}</h3>
-        <span className="rounded-full border border-[#E2E8F0] bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-[#64748B]">
+    <section className="bg-card/30">
+      <div className="flex items-center justify-between bg-card/50 px-4 py-2.5 backdrop-blur">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-foreground">{title}</h3>
+        <span className="rounded-full border border-border bg-card/70 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
           {count.toLocaleString("th-TH")} คน
         </span>
       </div>
-      <div className="hidden grid-cols-[minmax(220px,1.2fr)_minmax(220px,1fr)_140px_120px] border-t border-[#E2E8F0]/80 bg-[#F8FAFC]/70 px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#64748B] lg:grid">
+      <div className="hidden grid-cols-[minmax(220px,1.2fr)_minmax(220px,1fr)_140px_120px] border-t border-border bg-secondary/70 px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground lg:grid">
         <span>พนักงาน</span>
         <span>Email</span>
         <span>สถานะ</span>
@@ -369,21 +369,21 @@ function MappedEmployeeRow({
     <button
       type="button"
       onClick={onRename}
-      className="group grid w-full min-w-0 gap-3 border-t border-[#E2E8F0]/80 bg-white/36 px-4 py-3 text-left transition hover:bg-white/78 lg:grid-cols-[minmax(220px,1.2fr)_minmax(220px,1fr)_140px_120px] lg:items-center"
+      className="group grid w-full min-w-0 gap-3 border-t border-border bg-card/40 px-4 py-3 text-left transition hover:bg-accent/60 lg:grid-cols-[minmax(220px,1.2fr)_minmax(220px,1fr)_140px_120px] lg:items-center"
     >
       <div className="flex min-w-0 items-center gap-3">
         <UserAvatar name={displayName} />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[#0F172A]">{displayName}</p>
-          <p className="mt-1 text-xs text-[#64748B] lg:hidden">{username}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+          <p className="mt-1 text-xs text-muted-foreground lg:hidden">{username}</p>
         </div>
       </div>
-      <p className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-[#64748B] lg:flex">
+      <p className="hidden min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground lg:flex">
         <Link2 className="h-3 w-3 shrink-0" />
         <span className="truncate">{username}</span>
       </p>
       <div>
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#BBF7D0] bg-[#DCFCE7]/80 px-2.5 py-1 text-[11px] font-semibold text-[#15803D]">
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-status-safe/40 bg-status-safe-soft/80 px-2.5 py-1 text-[11px] font-semibold text-status-safe-strong">
           <CheckCircle2 className="h-3 w-3" />
           ตั้งชื่อแล้ว
         </span>
@@ -402,26 +402,26 @@ function MappedEmployeeRow({
 
 function UnmappedEmployeeRow({ username, onRename }: { username: string; onRename: () => void }) {
   return (
-    <div className="grid min-w-0 gap-3 border-t border-[#E2E8F0]/80 bg-white/20 px-4 py-3 transition hover:bg-white/58 lg:grid-cols-[minmax(220px,1.2fr)_minmax(220px,1fr)_140px_120px] lg:items-center">
+    <div className="grid min-w-0 gap-3 border-t border-border bg-card/25 px-4 py-3 transition hover:bg-accent/50 lg:grid-cols-[minmax(220px,1.2fr)_minmax(220px,1fr)_140px_120px] lg:items-center">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/70 text-[#64748B]">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card/70 text-muted-foreground">
           <User className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[#0F172A]">ยังไม่ได้ตั้งชื่อ</p>
-          <p className="mt-1 text-xs text-[#64748B] lg:hidden">{username}</p>
+          <p className="truncate text-sm font-semibold text-foreground">ยังไม่ได้ตั้งชื่อ</p>
+          <p className="mt-1 text-xs text-muted-foreground lg:hidden">{username}</p>
         </div>
       </div>
-      <p className="hidden min-w-0 truncate text-xs text-[#64748B] lg:block">{username}</p>
+      <p className="hidden min-w-0 truncate text-xs text-muted-foreground lg:block">{username}</p>
       <div>
-        <span className="inline-flex w-fit items-center rounded-full border border-[#E2E8F0] bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-[#64748B]">
+        <span className="inline-flex w-fit items-center rounded-full border border-border bg-card/70 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
           รอตั้งชื่อ
         </span>
       </div>
       <button
         type="button"
         onClick={onRename}
-        className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-lg bg-[#0F172A] px-3 text-xs font-semibold text-white hover:bg-[#1E293B] lg:ml-auto"
+        className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 lg:ml-auto"
       >
         <UserRoundPlus className="h-3.5 w-3.5" />
         ตั้งชื่อ
@@ -451,8 +451,8 @@ function IconButton({
         onClick();
       }}
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white/78 shadow-sm backdrop-blur transition hover:bg-white",
-        danger ? "text-[#DC2626] hover:border-[#FECACA]" : "text-[#64748B] hover:text-[#0F172A]"
+        "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card/80 shadow-sm backdrop-blur transition hover:bg-card",
+        danger ? "text-status-exceeded-strong hover:border-status-exceeded/40" : "text-muted-foreground hover:text-foreground"
       )}
     >
       {children}
@@ -463,11 +463,11 @@ function IconButton({
 function EmptyState({ icon: Icon, title, description }: { icon: LucideIcon; title: string; description: string }) {
   return (
     <div className="p-10 text-center">
-      <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-secondary text-[#64748B]">
+      <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
         <Icon className="h-5 w-5" />
       </span>
-      <p className="mt-4 text-sm font-semibold text-[#0F172A]">{title}</p>
-      <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-[#64748B]">{description}</p>
+      <p className="mt-4 text-sm font-semibold text-foreground">{title}</p>
+      <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted-foreground">{description}</p>
     </div>
   );
 }
@@ -489,39 +489,39 @@ function RenameDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 text-[#0F172A] shadow-lg">
+      <div className="w-full max-w-md rounded-2xl bg-card p-5 text-foreground shadow-lg">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-semibold">ตั้งชื่อแสดงผล</h3>
-            <p className="mt-1 text-xs text-[#64748B]">ชื่อนี้จะถูกใช้ในหน้า KPI และรายงานที่เกี่ยวข้อง</p>
+            <p className="mt-1 text-xs text-muted-foreground">ชื่อนี้จะถูกใช้ในหน้า KPI และรายงานที่เกี่ยวข้อง</p>
           </div>
-          <button type="button" onClick={onCancel} disabled={isSaving} aria-label="ปิด" className="rounded-lg p-2 text-[#64748B] hover:bg-secondary disabled:opacity-50">
+          <button type="button" onClick={onCancel} disabled={isSaving} aria-label="ปิด" className="rounded-lg p-2 text-muted-foreground hover:bg-secondary disabled:opacity-50">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="mt-5 space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[#475569]">Email</label>
-            <div className="rounded-lg border border-[#E2E8F0] bg-secondary px-3 py-2.5 text-sm text-[#0F172A]">{username}</div>
+            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Email</label>
+            <div className="rounded-lg border border-border bg-secondary px-3 py-2.5 text-sm text-foreground">{username}</div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[#475569]">ชื่อแสดงผล</label>
+            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">ชื่อแสดงผล</label>
             <input
               autoFocus
               value={value}
               onChange={(event) => setValue(event.target.value)}
-              className="w-full rounded-lg border border-[#CBD5E1] bg-white px-3 py-2.5 text-sm text-[#0F172A] outline-none focus:border-[#0F172A] focus:ring-2 focus:ring-[#0F172A]/10"
+              className="w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-[#0F172A]/10"
               placeholder="กรอกชื่อที่ต้องการแสดง"
             />
           </div>
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} disabled={isSaving} className="rounded-lg px-4 py-2 text-sm font-semibold text-[#64748B] hover:bg-secondary disabled:opacity-50">
+          <button type="button" onClick={onCancel} disabled={isSaving} className="rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary disabled:opacity-50">
             ยกเลิก
           </button>
-          <button type="button" disabled={isSaving || !value.trim()} onClick={() => void onSave(value)} className="inline-flex items-center gap-2 rounded-lg bg-[#0F172A] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1E293B] disabled:opacity-50">
+          <button type="button" disabled={isSaving || !value.trim()} onClick={() => void onSave(value)} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
             {isSaving && <Loader2 className="h-4 w-4 animate-spin" />} บันทึก
           </button>
         </div>
@@ -533,16 +533,16 @@ function RenameDialog({
 function DeleteDialog({ username, isSaving, onCancel, onConfirm }: { username: string; isSaving: boolean; onCancel: () => void; onConfirm: () => Promise<void> }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 text-[#0F172A] shadow-lg">
+      <div className="w-full max-w-md rounded-2xl bg-card p-5 text-foreground shadow-lg">
         <h3 className="text-base font-semibold">ลบชื่อที่ตั้งไว้?</h3>
-        <p className="mt-2 text-sm leading-6 text-[#64748B]">
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
           ชื่อของ &quot;{username}&quot; จะกลับไปแสดงเป็น Email เดิม
         </p>
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} disabled={isSaving} className="rounded-lg px-4 py-2 text-sm font-semibold text-[#64748B] hover:bg-secondary disabled:opacity-50">
+          <button type="button" onClick={onCancel} disabled={isSaving} className="rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-secondary disabled:opacity-50">
             ยกเลิก
           </button>
-          <button type="button" disabled={isSaving} onClick={() => void onConfirm()} className="inline-flex items-center gap-2 rounded-lg bg-[#DC2626] px-4 py-2 text-sm font-semibold text-white hover:bg-[#B91C1C] disabled:opacity-50">
+          <button type="button" disabled={isSaving} onClick={() => void onConfirm()} className="inline-flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
             {isSaving && <Loader2 className="h-4 w-4 animate-spin" />} ลบ
           </button>
         </div>

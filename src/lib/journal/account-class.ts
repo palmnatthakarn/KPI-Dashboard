@@ -1,3 +1,5 @@
+import { statusPalette, accentPalette, categoricalPalette } from "@/lib/design/tokens";
+
 /**
  * Ported 1:1 from lib/models/account_class.dart.
  * Classifies a Journal's raw `accounttype` string (Thai or English) into
@@ -47,19 +49,27 @@ export function accountClassDisplayName(c: AccountClass): string {
   }
 }
 
+/**
+ * Account-class color. Returns the `strong` shade because callers render it as
+ * TEXT on a light tint of itself — the lighter shades used previously sat at
+ * roughly 2.5:1 against white and failed WCAG AA.
+ *
+ * Income/expense reuse the status palette (money in is "safe", money out reads
+ * as the exceeded color); the rest are neutral category colors.
+ */
 export function accountClassColor(c: AccountClass): string {
   switch (c) {
     case "income":
-      return "#10B981";
+      return statusPalette.safe.strong;
     case "expenses":
     case "liabilities":
-      return "#EF4444";
+      return statusPalette.exceeded.strong;
     case "assets":
-      return "#3B82F6";
+      return accentPalette.info.strong;
     case "equity":
-      return "#8B5CF6";
+      return categoricalPalette[4];
     case "unknown":
-      return "#64748B";
+      return accentPalette.neutral.strong;
   }
 }
 

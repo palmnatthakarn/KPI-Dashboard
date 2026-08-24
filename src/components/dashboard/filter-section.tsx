@@ -2,15 +2,18 @@
 
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getShopCountByStatus, type ShopStatusFilter } from "@/lib/dashboard/dashboard-helper";
+import { getShopCountByStatus, STATUS_COLORS, type ShopStatusFilter } from "@/lib/dashboard/dashboard-helper";
 import { DateRangePicker, type DateRange } from "@/components/common/date-range-picker";
 import type { DocDetails } from "@/types/shop";
 
+// "all" isn't a shop status, so it keeps its own neutral accent color;
+// safe/warning/exceeded read from STATUS_COLORS.text (WCAG-safe on white)
+// so chips match the stat cards and table above/below them.
 const FILTERS: { key: ShopStatusFilter; label: string; color: string }[] = [
-  { key: "all", label: "ทั้งหมด", color: "#3B82F6" },
-  { key: "safe", label: "Safe", color: "#10B981" },
-  { key: "warning", label: "Warning", color: "#F59E0B" },
-  { key: "exceeded", label: "Exceeded", color: "#EF4444" },
+  { key: "all", label: "ทั้งหมด", color: "#2563EB" },
+  { key: "safe", label: "Safe", color: STATUS_COLORS.safe.text },
+  { key: "warning", label: "Warning", color: STATUS_COLORS.warning.text },
+  { key: "exceeded", label: "Exceeded", color: STATUS_COLORS.exceeded.text },
 ];
 
 export type { DateRange };
@@ -35,7 +38,7 @@ export function FilterSection({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="relative w-64">
+      <div className="relative w-full sm:w-64">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           value={searchQuery}
@@ -73,7 +76,7 @@ export function FilterSection({
         );
       })}
 
-      <div className="ml-auto">
+      <div className="w-full sm:ml-auto sm:w-auto">
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
       </div>
     </div>

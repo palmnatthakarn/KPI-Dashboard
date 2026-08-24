@@ -164,7 +164,7 @@ export function DateRangePicker({
         <Popover.Content
           align="end"
           sideOffset={8}
-          className="z-50 w-[300px] rounded-2xl border border-border bg-card p-3 shadow-lg"
+          className="isolate z-50 w-[300px] rounded-2xl border border-border bg-card p-3 opacity-100 shadow-xl"
         >
           <div className="flex flex-wrap gap-1.5 border-b border-border pb-3">
             {PRESETS.map((p) => (

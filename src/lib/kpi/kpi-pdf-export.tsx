@@ -47,6 +47,16 @@ const headers = [
   "แก้ไข",
 ];
 
+function formatPdfNumber(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
+function formatPdfCell(cell: string, header: boolean): string {
+  if (header || !/^-?\d+(?:\.\d+)?$/.test(cell.trim())) return cell;
+  const value = Number(cell);
+  return Number.isFinite(value) ? value.toLocaleString("en-US", { maximumFractionDigits: 20 }) : cell;
+}
+
 const styles = StyleSheet.create({
   page: { padding: 22, fontFamily: "Sarabun", fontSize: 6.5, color: "#1f2937" },
   title: { fontSize: 15, fontWeight: 700, textAlign: "center" },
@@ -55,14 +65,14 @@ const styles = StyleSheet.create({
   rule: { borderBottomWidth: 1, borderBottomColor: "#111827", marginBottom: 8 },
   group: { marginBottom: 10 },
   groupHeader: { flexDirection: "row", justifyContent: "space-between", paddingBottom: 3, borderBottomWidth: 0.7, borderBottomColor: "#111827" },
-  groupName: { fontSize: 9, fontWeight: 700 },
-  groupSummary: { fontSize: 7, color: "#64748b" },
+  groupName: { width: "50%", paddingRight: 6, fontSize: 9, fontWeight: 700 },
+  groupSummary: { width: "50%", fontSize: 7, color: "#64748b", textAlign: "right" },
   row: { flexDirection: "row", borderLeftWidth: 0.35, borderBottomWidth: 0.35, borderColor: "#94a3b8", minHeight: 18 },
   headerRow: { backgroundColor: "#e2e8f0", minHeight: 34 },
   totalRow: { backgroundColor: "#eff6ff" },
   contextRow: { color: "#ea580c" },
-  firstCell: { width: "16%", padding: 2.5, borderRightWidth: 0.35, borderColor: "#94a3b8", justifyContent: "center" },
-  cell: { width: "5.25%", padding: 2, borderRightWidth: 0.35, borderColor: "#94a3b8", justifyContent: "center", textAlign: "right" },
+  firstCell: { width: "20%", padding: 2.5, borderRightWidth: 0.35, borderColor: "#94a3b8", justifyContent: "center" },
+  cell: { width: "5%", padding: 2, borderRightWidth: 0.35, borderColor: "#94a3b8", justifyContent: "center", textAlign: "right" },
   headerText: { fontWeight: 700, textAlign: "center", fontSize: 5.8 },
   footer: { position: "absolute", left: 22, right: 22, bottom: 10, flexDirection: "row", justifyContent: "space-between", fontSize: 6, color: "#64748b" },
 });
@@ -94,7 +104,9 @@ function PdfTableRow({ cells, header = false, total = false, context = false }: 
     <View style={[styles.row, header ? styles.headerRow : {}, total ? styles.totalRow : {}, context ? styles.contextRow : {}]} wrap={false}>
       {cells.map((cell, index) => (
         <View key={index} style={index === 0 ? styles.firstCell : styles.cell}>
-          <Text style={header ? styles.headerText : {}}>{cell}</Text>
+          <Text style={header ? styles.headerText : {}}>
+            {!header && index === 0 ? `${formatPdfCell(cell, false)}\u00A0` : formatPdfCell(cell, header)}
+          </Text>
         </View>
       ))}
     </View>
@@ -114,6 +126,10 @@ function KpiPdfDocument({ employees, startDate, endDate, userName }: { employees
         </View>
         <View style={styles.rule} />
         {employees.map((employee, employeeIndex) => {
+          const displayName = getDisplayName(employee.name);
+          const employeeLabel = displayName === employee.name
+            ? employee.name
+            : `${displayName} (${employee.name})`;
           // Keep PDF generation bounded: the interactive table can contain
           // thousands of task/journal detail rows. The printable report uses
           // the same KPI totals summarized per employee and shop, which is
@@ -132,8 +148,8 @@ function KpiPdfDocument({ employees, startDate, endDate, userName }: { employees
                   employee name at the bottom of the previous page. */}
               <View wrap={false}>
                 <View style={styles.groupHeader}>
-                  <Text style={styles.groupName}>{employeeIndex + 1}. {getDisplayName(employee.name)}</Text>
-                  <Text style={styles.groupSummary}>บิลที่รับผิดชอบ {employee.totalDocuments} · อัปโหลด {employee.totalUploaded} รูป · คีย์บัญชี {employee.totalJournals + employee.totalJournalsNoPhoto} รายการ</Text>
+                  <Text style={styles.groupName}>{employeeIndex + 1}. {employeeLabel}</Text>
+                  <Text style={styles.groupSummary}>บิลที่รับผิดชอบ {formatPdfNumber(employee.totalDocuments)} · อัปโหลด {formatPdfNumber(employee.totalUploaded)} รูป · คีย์บัญชี {formatPdfNumber(employee.totalJournals + employee.totalJournalsNoPhoto)} รายการ</Text>
                 </View>
                 <PdfTableRow cells={headers} header />
                 {firstRow ? <PdfTableRow cells={firstRow} /> : null}
