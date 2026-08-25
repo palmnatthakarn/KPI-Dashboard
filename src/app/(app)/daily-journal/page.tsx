@@ -7,7 +7,6 @@ export default function DailyJournalPage() {
     <BaseReportPage
       title="สมุดรายวัน (Daily Journal)"
       reportTypes={REPORT_TYPES}
-      defaultReportType="ทุกสมุดรายวัน"
     />
   );
 }

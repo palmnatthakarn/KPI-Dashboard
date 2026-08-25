@@ -1,4 +1,7 @@
+"use client";
+
 import { BaseReportPage } from "@/components/reports/base-report-page";
+import { fetchFinancialStatement } from "@/lib/reports/financial-statement-service";
 
 const REPORT_TYPES = [
   "งบทดลอง",
@@ -14,5 +17,5 @@ const REPORT_TYPES = [
 ];
 
 export default function FinancialStatementsPage() {
-  return <BaseReportPage title="งบการเงิน (Financial Statements)" reportTypes={REPORT_TYPES} />;
+  return <BaseReportPage title="งบการเงิน (Financial Statements)" reportTypes={REPORT_TYPES} dataLoader={fetchFinancialStatement} />;
 }

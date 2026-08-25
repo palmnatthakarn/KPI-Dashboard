@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, Store, Image as ImageIcon } from "lucide-react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -39,6 +39,13 @@ export function ShopTable({ shops }: { shops: DocDetails[] }) {
   const [galleryShop, setGalleryShop] = useState<DocDetails | null>(null);
 
   const validShops = useMemo(() => shops.filter((s) => !!s.shopid), [shops]);
+
+  // A search or status filter can shrink the result set while the user is on a
+  // later page. Resetting here mirrors Flutter's paginated data source and
+  // avoids briefly showing an empty/clamped page after the filter changes.
+  useEffect(() => {
+    setPage(1);
+  }, [shops]);
 
   const totalPages = Math.max(1, Math.ceil(validShops.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);

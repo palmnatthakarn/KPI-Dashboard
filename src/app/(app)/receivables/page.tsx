@@ -1,4 +1,7 @@
+"use client";
+
 import { BaseReportPage } from "@/components/reports/base-report-page";
+import { fetchReceivablesReport } from "@/lib/reports/receivables-report-service";
 
 const REPORT_TYPES = [
   "วิเคราะห์อายุลูกหนี้ (AR Aging)",
@@ -7,5 +10,11 @@ const REPORT_TYPES = [
 ];
 
 export default function ReceivablesPage() {
-  return <BaseReportPage title="ลูกหนี้และการขาย (Receivables & Sales)" reportTypes={REPORT_TYPES} />;
+  return (
+    <BaseReportPage
+      title="ลูกหนี้และการขาย (Receivables & Sales)"
+      reportTypes={REPORT_TYPES}
+      dataLoader={fetchReceivablesReport}
+    />
+  );
 }

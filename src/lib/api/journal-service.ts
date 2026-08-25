@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api/client";
-import type { GetAllJournalsParams, JournalResponse } from "@/types/journal";
+import type { GetAllJournalsParams, JournalBook, JournalDetail, JournalResponse } from "@/types/journal";
 
 export interface GetAllGLJournalsParams {
   page?: number;
@@ -64,4 +64,14 @@ export async function getAllGLJournals(params: GetAllGLJournalsParams = {}): Pro
   });
 
   return data;
+}
+
+export async function getJournalBooks(): Promise<JournalBook[]> {
+  const { data } = await apiClient.get<{ data?: JournalBook[] } | JournalBook[]>("/gl/journalbook");
+  return Array.isArray(data) ? data : data.data ?? [];
+}
+
+export async function getJournalDetailByDocNo(docNo: string): Promise<JournalDetail> {
+  const { data } = await apiClient.get<{ data?: JournalDetail } | JournalDetail>(`/gl/journal/docno/${encodeURIComponent(docNo)}`);
+  return "data" in data && data.data ? data.data : (data as JournalDetail);
 }

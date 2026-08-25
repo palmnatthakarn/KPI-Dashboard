@@ -69,3 +69,16 @@ export interface GetAllJournalsParams {
   accountType?: string;
   status?: string;
 }
+
+export interface JournalBook { guidfixed?: string; code?: string; name1?: string; name2?: string; name3?: string; name4?: string; name5?: string; }
+export interface JournalPersonName { code?: string; name?: string; }
+export interface JournalPerson { names?: JournalPersonName[]; }
+export interface JournalDetailItem { accountcode?: string; accountname?: string; debitamount?: number; creditamount?: number; }
+export interface JournalDetail {
+  docno?: string;
+  exdocrefno?: string;
+  accountdescription?: string;
+  debtor?: JournalPerson;
+  creditor?: JournalPerson;
+  journaldetail?: JournalDetailItem[];
+}

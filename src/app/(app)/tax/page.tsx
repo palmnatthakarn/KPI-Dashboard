@@ -1,4 +1,7 @@
+"use client";
+
 import { BaseReportPage } from "@/components/reports/base-report-page";
+import { fetchTaxReport } from "@/lib/reports/tax-report-service";
 
 const REPORT_TYPES = [
   "รายงานภาษีซื้อ",
@@ -9,5 +12,11 @@ const REPORT_TYPES = [
 ];
 
 export default function TaxPage() {
-  return <BaseReportPage title="รายงานภาษี (Tax Reports)" reportTypes={REPORT_TYPES} />;
+  return (
+    <BaseReportPage
+      title="รายงานภาษี (Tax Reports)"
+      reportTypes={REPORT_TYPES}
+      dataLoader={fetchTaxReport}
+    />
+  );
 }

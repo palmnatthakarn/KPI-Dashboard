@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   LineChart,
+  NotebookPen,
   FileText,
   Coins,
   Receipt,
@@ -37,6 +38,8 @@ const reportChildren = [
 const menuItems = [
   { title: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { title: "KPI", href: "/kpi", icon: LineChart },
+  { title: "KPI บันทึกบัญชี", href: "/kpi-journal", icon: NotebookPen },
+  { title: "ตรวจสอบเอกสาร", href: "/documents/approval", icon: FileText },
   { title: "Reports", icon: FileText, children: reportChildren },
   { title: "Settings", href: "/settings", icon: Settings },
 ];

@@ -8,6 +8,8 @@ import { ReportHeader } from "@/components/reports/report-header";
 import { ReportEmptyState } from "@/components/reports/report-empty-state";
 import { GenericReportTable } from "@/components/reports/generic-report-table";
 import { getReportTableData, UNIMPLEMENTED_REPORT_TYPES } from "@/lib/reports/report-data";
+import { listShops } from "@/lib/api/multi-shop-service";
+import type { ReportQuery, ReportTableData } from "@/types/report";
 
 function toISODate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -38,16 +40,23 @@ export function BaseReportPage({
   title,
   reportTypes,
   defaultReportType,
+  dataLoader,
 }: {
   title: string;
   reportTypes: string[];
   defaultReportType?: string;
+  dataLoader?: (query: ReportQuery) => Promise<ReportTableData>;
 }) {
   const [selectedReportType, setSelectedReportType] = useState<string | null>(defaultReportType ?? null);
   const [startDate, setStartDate] = useState<string | null>(firstOfMonthISO());
   const [endDate, setEndDate] = useState<string | null>(toISODate(new Date()));
   const [fullscreen, setFullscreen] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [shops, setShops] = useState<{ id: string; name: string }[]>([]);
+  const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
+  const [appliedReportType, setAppliedReportType] = useState<string | null>(null);
+  const [tableData, setTableData] = useState<ReportTableData | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -55,15 +64,54 @@ export function BaseReportPage({
     return () => clearTimeout(t);
   }, [toast]);
 
+  useEffect(() => {
+    if (!dataLoader) return;
+    let active = true;
+    listShops().then((items) => {
+      if (!active) return;
+      const parsed = items.map((shop) => {
+        const id = String(shop.shopid ?? shop.shop_id ?? shop.id ?? "");
+        const names = Array.isArray(shop.names) ? shop.names as { code?: string; name?: string }[] : [];
+        const localized = names.find((name) => name.code === "th") ?? names[0];
+        return { id, name: localized?.name ?? String(shop.shopname ?? shop.shop_name ?? id) };
+      }).filter((shop) => shop.id);
+      setShops(parsed);
+      if (parsed.length === 1) setSelectedShopId(parsed[0].id);
+    });
+    return () => { active = false; };
+  }, [dataLoader]);
+
+  async function applySearch() {
+    if (!selectedReportType) return setToast({ message: "กรุณาเลือกประเภทรายงาน", variant: "error" });
+    if (startDate && endDate && startDate > endDate) return setToast({ message: "วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด", variant: "error" });
+    if (!dataLoader) {
+      setAppliedReportType(selectedReportType);
+      setTableData(getReportTableData(selectedReportType));
+      return;
+    }
+    if (!selectedShopId) return setToast({ message: "กรุณาเลือกร้านก่อนค้นหารายงาน", variant: "error" });
+    setLoading(true);
+    setAppliedReportType(selectedReportType);
+    try {
+      const result = await dataLoader({ reportType: selectedReportType, shopId: selectedShopId, startDate: startDate ?? "", endDate: endDate ?? "" });
+      setTableData(result);
+    } catch (error) {
+      setTableData(null);
+      setToast({ message: error instanceof Error ? error.message : "โหลดรายงานไม่สำเร็จ", variant: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleExport(type: "PDF" | "Excel") {
-    if (type === "PDF" && selectedReportType) {
-      const data = getReportTableData(selectedReportType);
+    if (type === "PDF" && appliedReportType) {
+      const data = tableData;
       if (data) {
         setToast({ message: "กำลังสร้างไฟล์ PDF...", variant: "loading" });
         try {
           const { exportTablePdf } = await import("@/lib/reports/table-pdf-export");
           await exportTablePdf({
-            title: selectedReportType,
+            title: appliedReportType,
             subtitle: `ช่วงวันที่ ${startDate ?? "-"} ถึง ${endDate ?? "-"}`,
             table: data,
           });
@@ -78,8 +126,7 @@ export function BaseReportPage({
     setToast({ message: `กำลังดาวน์โหลดรายงาน ${type}...`, variant: "success" });
   }
 
-  const tableData = selectedReportType ? getReportTableData(selectedReportType) : null;
-  const isUnimplemented = !!selectedReportType && UNIMPLEMENTED_REPORT_TYPES.has(selectedReportType);
+  const isUnimplemented = !!appliedReportType && UNIMPLEMENTED_REPORT_TYPES.has(appliedReportType);
 
   return (
     <div className="space-y-6">
@@ -87,15 +134,20 @@ export function BaseReportPage({
 
       <ReportFilterSection
         reportTypes={reportTypes}
+        shops={dataLoader ? shops : undefined}
+        selectedShopId={selectedShopId}
         selectedReportType={selectedReportType}
         startDate={startDate}
         endDate={endDate}
         onReportTypeChange={setSelectedReportType}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
+        onShopChange={setSelectedShopId}
+        onSearch={applySearch}
+        isLoadingShops={!!dataLoader && shops.length === 0}
       />
 
-      {selectedReportType ? (
+      {appliedReportType ? (
         <div className="space-y-4 rounded-2xl bg-card p-5 shadow-sm">
           <ReportHeader
             startDate={startDate}
@@ -103,8 +155,12 @@ export function BaseReportPage({
             onFullScreen={() => setFullscreen(true)}
             onExport={handleExport}
           />
-          {tableData ? (
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />กำลังโหลดรายงาน...</div>
+          ) : tableData && tableData.rows.length > 0 ? (
             <GenericReportTable {...tableData} />
+          ) : tableData ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">ไม่พบข้อมูลในเงื่อนไขที่เลือก</p>
           ) : isUnimplemented ? (
             <p className="py-10 text-center text-sm text-muted-foreground">รายงานนี้อยู่ระหว่างพัฒนา</p>
           ) : null}
@@ -131,7 +187,7 @@ export function BaseReportPage({
           <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
           <Dialog.Content className="fixed inset-0 z-50 overflow-y-auto bg-background">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <Dialog.Title className="text-base font-semibold">{selectedReportType}</Dialog.Title>
+              <Dialog.Title className="text-base font-semibold">{appliedReportType}</Dialog.Title>
               <Dialog.Close className="rounded-md p-1.5 hover:bg-accent">
                 <X className="h-5 w-5" />
               </Dialog.Close>
