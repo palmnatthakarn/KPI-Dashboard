@@ -6,6 +6,8 @@
  * to match here.
  */
 
+import type { DocumentImage } from "@/types/document-image";
+
 export interface KpiCombinedJournalItem {
   docNo: string;
   accountName: string;
@@ -42,6 +44,8 @@ export interface KpiCombinedTaskItem {
   keyedByThisEmployee: number;
   /** Images this employee uploaded on this task (from /documentimagegroup). */
   uploadedByThisEmployee: number;
+  /** The exact image-reference records behind uploadedByThisEmployee. */
+  uploadedImages: DocumentImage[];
   /** Owner row = every entry linked to task; contributor row = scoped to just that employee's own entries. */
   journalEntries: KpiCombinedJournalItem[];
   waitingVerify: number;
@@ -77,6 +81,8 @@ export interface KpiCombinedShopStat {
   journalUpdated: number;
   /** Total images this employee uploaded in this shop (not gated by task ownership). */
   uploadedCount: number;
+  /** Exact uploaded-image records included in this employee/shop KPI row. */
+  uploadedImages: DocumentImage[];
   /** Sorted by ownerAt descending. */
   tasks: KpiCombinedTaskItem[];
   /** GL rows counted in totals above but whose resolved task guid isn't in `tasks`. */

@@ -20,6 +20,8 @@ export default function DashboardPage() {
     documentCounts,
     isDocumentCountsLoading,
     documentCountsError,
+    uploadedImageCounts,
+    uploadedImagesByShop,
     filteredShops,
     isLoading,
     isError,
@@ -98,7 +100,11 @@ export default function DashboardPage() {
         onDateRangeChange={setDateRange}
       />
 
-      <ShopTable shops={filteredShops} />
+      <ShopTable
+        shops={filteredShops}
+        uploadedImageCounts={uploadedImageCounts}
+        uploadedImagesByShop={uploadedImagesByShop}
+      />
     </div>
   );
 }

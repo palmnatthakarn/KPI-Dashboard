@@ -8,17 +8,44 @@ export interface DocumentImage {
   uploadedAt: string | null;
   uploadedBy: string | null;
   imageUrl: string | null;
+  /** Parent /documentimagegroup identity. Images sharing this value are one set. */
+  groupId?: string | null;
+  groupTitle?: string | null;
+  groupOrder?: number | null;
+  groupDocNo?: string | null;
+}
+
+export function getDocumentImageGroupKey(
+  image: DocumentImage,
+  fallbackIndex = 0
+): string {
+  return (
+    image.groupId ||
+    `single:${image.imageId ?? image.imageUrl ?? fallbackIndex}`
+  );
+}
+
+export function countDocumentImageGroups(images: DocumentImage[]): number {
+  const groups = new Set<string>();
+  images.forEach((image, index) => {
+    groups.add(getDocumentImageGroupKey(image, index));
+  });
+  return groups.size;
 }
 
 function resolveDocumentImageUrl(value: unknown): string | null {
   const raw = value?.toString().trim();
   if (!raw) return null;
 
+  // Some deployments wrap the URL in Markdown: [url](url).
+  const markdownUrl = raw.match(/^\[(https?:\/\/[^\]]+)\]\((https?:\/\/[^)]+)\)$/);
+  const normalized = markdownUrl?.[2] ?? raw;
+
   // The API sometimes returns an absolute URL and sometimes only a path such
   // as `/uploads/...`. Relative paths must point to the API host, not Vercel.
   try {
     return new URL(
-      raw,
+      normalized,
       process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.dedepos.com"
     ).toString();
   } catch {
@@ -41,7 +68,12 @@ export function parseDocumentImage(json: any): DocumentImage {
     json?.url;
 
   return {
-    imageId: json?.imageid?.toString() ?? json?.guidfixed?.toString() ?? null,
+    imageId:
+      json?.documentimageguid?.toString() ??
+      json?.documentImageGuid?.toString() ??
+      json?.imageid?.toString() ??
+      json?.guidfixed?.toString() ??
+      null,
     shopId: json?.shopid?.toString() ?? json?.guidfixedid?.toString() ?? null,
     category: json?.category?.toString() ?? null,
     subcategory: json?.subcategory?.toString() ?? null,

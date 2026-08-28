@@ -1,3 +1,4 @@
+import type { DocumentImage } from "@/types/document-image";
 import type { Journal } from "@/types/journal";
 import type { TaskItem } from "@/types/task";
 import { getStatusCount } from "@/types/task";
@@ -25,6 +26,10 @@ export interface ShopFetchResult {
   docNoToTaskGuid: Map<string, string>;
   /** taskGuid -> (uploader -> imageCount), from /documentimagegroup for this shop. */
   taskUploaderCounts: Map<string, Map<string, number>>;
+  /** taskGuid -> exact image-reference records from /documentimagegroup. */
+  taskUploadedImages: Map<string, DocumentImage[]>;
+  /** GL documentref -> exact image-reference records from /documentimagegroup. */
+  documentRefUploadedImages: Map<string, DocumentImage[]>;
   /** Shop-wide billcount total from /documentimagegroup, feeds journalRequiredDocs. */
   billCount: number;
   /** Active documents in the selected import-date range, including documents without a task. */
@@ -99,6 +104,7 @@ interface ShopAcc {
   journalChecked: number;
   journalUpdated: number;
   uploadedCount: number;
+  journalUploadedImages: DocumentImage[];
   tasks: KpiCombinedTaskItem[];
   orphanJournalEntries: KpiCombinedJournalItem[];
   /** dedupe key set for orphan journal insertion, keyed by docNo+keyedAt. */
@@ -121,6 +127,7 @@ function newShopAcc(): ShopAcc {
     journalChecked: 0,
     journalUpdated: 0,
     uploadedCount: 0,
+    journalUploadedImages: [],
     tasks: [],
     orphanJournalEntries: [],
     _orphanSeen: new Set(),
@@ -129,6 +136,20 @@ function newShopAcc(): ShopAcc {
 
 function orphanKey(j: Journal): string {
   return `${j.docno ?? ""}|${j.createdat ?? ""}|${j.createdby ?? ""}`;
+}
+
+function imageKey(image: DocumentImage): string {
+  return image.imageId ?? image.imageUrl ?? `${image.uploadedBy ?? ""}|${image.uploadedAt ?? ""}|${image.description ?? ""}`;
+}
+
+function dedupeImages(images: DocumentImage[]): DocumentImage[] {
+  const seen = new Set<string>();
+  return images.filter((image) => {
+    const key = imageKey(image);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
@@ -169,6 +190,18 @@ export function reconcileKpiEmployees(
     }
   }
 
+  const normalizedTaskUploadedImages = new Map<string, DocumentImage[]>();
+  for (const shop of shopResults) {
+    for (const [taskGuid, images] of shop.taskUploadedImages) {
+      const guid = norm(taskGuid);
+      if (!guid) continue;
+      normalizedTaskUploadedImages.set(
+        guid,
+        dedupeImages([...(normalizedTaskUploadedImages.get(guid) ?? []), ...images])
+      );
+    }
+  }
+
   // employeeName -> shopName -> ShopAcc
   const byEmployeeShop = new Map<string, Map<string, ShopAcc>>();
   // employeeName -> shopName -> journalRequiredDocs (broadcast per shop)
@@ -197,7 +230,15 @@ export function reconcileKpiEmployees(
   }
 
   for (const shop of shopResults) {
-    const { shopName, tasks, journals, docNoToTaskGuid, taskUploaderCounts, billCount } = shop;
+    const {
+      shopName,
+      tasks,
+      journals,
+      docNoToTaskGuid,
+      taskUploaderCounts,
+      billCount,
+      documentRefUploadedImages,
+    } = shop;
 
     // Step 5 — group journals by resolved task guid within this shop.
     const journalsByTaskGuid = new Map<string, Journal[]>();
@@ -266,6 +307,18 @@ export function reconcileKpiEmployees(
         }
       }
 
+      const uploaderImagesMap = new Map<string, DocumentImage[]>();
+      for (const guid of linkedGuids) {
+        for (const image of normalizedTaskUploadedImages.get(guid) ?? []) {
+          const uploader = (image.uploadedBy ?? "").trim();
+          if (!uploader) continue;
+          uploaderImagesMap.set(
+            uploader,
+            dedupeImages([...(uploaderImagesMap.get(uploader) ?? []), image])
+          );
+        }
+      }
+
       // Step 10 — per-task derived status fields (reflect the task's real state).
       const taskPassed = getStatusCount(task, 1);
       const taskRequiredToRecord = taskPassed;
@@ -314,6 +367,7 @@ export function reconcileKpiEmployees(
           isOwner: true,
           keyedByThisEmployee: 0,
           uploadedByThisEmployee: uploaderMap.get(task.ownerBy) ?? 0,
+          uploadedImages: uploaderImagesMap.get(task.ownerBy) ?? [],
           journalEntries: inRangeJournals.map((j) => {
             const r = resolvedByJournal.get(j)!;
             return toKpiJournalItem(j, r.guid, !r.orphan);
@@ -351,6 +405,7 @@ export function reconcileKpiEmployees(
           isOwner: false,
           keyedByThisEmployee: keyedDocumentCount,
           uploadedByThisEmployee,
+          uploadedImages: uploaderImagesMap.get(contributor) ?? [],
           journalEntries: contributorJournals.map((j) => {
             const r = resolvedByJournal.get(j)!;
             return toKpiJournalItem(j, r.guid, !r.orphan);
@@ -377,7 +432,15 @@ export function reconcileKpiEmployees(
       const updatedAt = parseDateSafe(j.updatedat);
 
       if (creator && inRange(createdAt, startOfDay, endOfDay)) {
-        const acc = getAcc(creator, shopName);
+          const acc = getAcc(creator, shopName);
+          const documentRef = (j.documentref ?? "").trim();
+          if (documentRef) {
+            const referencedImages = documentRefUploadedImages.get(norm(documentRef)) ?? [];
+            acc.journalUploadedImages = dedupeImages([
+              ...acc.journalUploadedImages,
+              ...referencedImages,
+            ]);
+          }
         if (r.noPhoto) {
           acc.journalCountNoPhoto += 1;
         } else {
@@ -455,7 +518,11 @@ export function reconcileKpiEmployees(
 
     for (const [shopName, acc] of shopMap) {
       const reqDocs = requiredDocsByEmployeeShop.get(employeeName)?.get(shopName) ?? 0;
-      const uploadedInShop = acc.tasks.reduce((sum, t) => sum + t.uploadedByThisEmployee, 0);
+      const uploadedImages = dedupeImages([
+        ...acc.tasks.flatMap((task) => task.uploadedImages),
+        ...acc.journalUploadedImages,
+      ]);
+      const uploadedInShop = uploadedImages.length;
 
       shopStats.push({
         shopName,
@@ -475,6 +542,7 @@ export function reconcileKpiEmployees(
         journalChecked: acc.journalChecked,
         journalUpdated: acc.journalUpdated,
         uploadedCount: uploadedInShop,
+        uploadedImages,
         tasks: [...acc.tasks].sort((a, b) => b.ownerAt.getTime() - a.ownerAt.getTime()),
         orphanJournalEntries: acc.orphanJournalEntries,
       });

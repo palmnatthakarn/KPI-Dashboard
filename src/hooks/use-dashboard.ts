@@ -12,6 +12,10 @@ import {
 } from "@/lib/dashboard/dashboard-helper";
 import { getCurrentYearDateRange } from "@/lib/api/multi-shop-service";
 import { fetchKpiCombinedData } from "@/lib/kpi/kpi-combined-service";
+import {
+  countDocumentImageGroups,
+  type DocumentImage,
+} from "@/types/document-image";
 
 function parseLocalDate(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
@@ -111,6 +115,7 @@ export function useDashboard() {
     queryKey: [
       "dashboard",
       "kpi-summary",
+      "uploaded-images-task-gl-v3",
       kpiRange.startDate.toDateString(),
       kpiRange.endDate.toDateString(),
     ],
@@ -127,12 +132,50 @@ export function useDashboard() {
     placeholderData: keepPreviousData,
   });
 
+  const uploadedImagesByShop = useMemo(() => {
+    const imagesByShop: Record<string, DocumentImage[]> = {};
+    const seenByShop: Record<string, Set<string>> = {};
+
+    for (const employee of kpiQuery.data?.employees ?? []) {
+      for (const shop of employee.shopStats) {
+        const shopKey = shop.shopName.trim().toLowerCase();
+        const images = imagesByShop[shopKey] ?? [];
+        const seen = seenByShop[shopKey] ?? new Set<string>();
+        imagesByShop[shopKey] = images;
+        seenByShop[shopKey] = seen;
+
+        for (const image of shop.uploadedImages) {
+          const imageKey =
+            image.imageId ??
+            image.imageUrl ??
+            `${image.uploadedBy ?? ""}|${image.uploadedAt ?? ""}|${image.description ?? ""}`;
+          if (seen.has(imageKey)) continue;
+          seen.add(imageKey);
+          images.push(image);
+        }
+      }
+    }
+    return imagesByShop;
+  }, [kpiQuery.data?.employees]);
+
+  const uploadedImageCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(uploadedImagesByShop).map(([shopName, images]) => [
+          shopName,
+          countDocumentImageGroups(images),
+        ])
+      ),
+    [uploadedImagesByShop]
+  );
+
   const documentCounts = useMemo<DocumentCounts>(() => {
     const employees = kpiQuery.data?.employees;
+    const billDateTotal = shops.reduce((total, shop) => total + (shop.localImageCount ?? 0), 0);
     if (!employees) {
       // DocumentCard shows a loading skeleton in place of `total` while
       // `employees` is unset, so this value is never actually seen.
-      return { total: 0, requiredToRecord: 0, recorded: 0 };
+      return { total: billDateTotal, requiredToRecord: 0, recorded: 0 };
     }
 
     const rangeStart = new Date(
@@ -150,11 +193,10 @@ export function useDashboard() {
       999
     ).getTime();
 
-    // `total` is the same figure the KPI page shows as "จำนวนบิลทั้งหมด" (see
-    // summary.totalDocuments in use-kpi-combined.ts): both sum
-    // employee.totalDocuments from the SAME fetchKpiCombinedData result.
-    // This part is verified working (matches KPI's total within noise when
-    // both fetch cleanly) — do not change it while investigating the below.
+    // `total` is the sum of the per-shop image/bill counts returned for the
+    // selected range. Those counts are filtered by each reference's bill date
+    // in shop-repository/document-image-service, rather than by task owner or
+    // image upload date.
     //
     // `requiredToRecord`/`recorded`: reverted back to the ownerAt-filtered
     // version, matching monitor's separate KpiBloc. Two attempts to make
@@ -170,7 +212,7 @@ export function useDashboard() {
     // known-good version: not reconciled with `total`, but internally sane
     // (recorded <= required).
     const counts: DocumentCounts = {
-      total: employees.reduce((sum, employee) => sum + employee.totalDocuments, 0),
+      total: billDateTotal,
       requiredToRecord: 0,
       recorded: 0,
     };
@@ -190,7 +232,7 @@ export function useDashboard() {
       }
     }
     return counts;
-  }, [kpiQuery.data?.employees, kpiRange.endDate, kpiRange.startDate]);
+  }, [kpiQuery.data?.employees, kpiRange.endDate, kpiRange.startDate, shops]);
 
   const filteredShops = useMemo(
     () => filterShops(shops, searchQuery, selectedFilter),
@@ -214,6 +256,8 @@ export function useDashboard() {
     incompleteShops: kpiQuery.data?.incompleteShops ?? [],
     isDocumentCountsLoading: kpiQuery.isPending || kpiQuery.isFetching,
     documentCountsError: kpiQuery.error,
+    uploadedImageCounts,
+    uploadedImagesByShop,
     filteredShops,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
