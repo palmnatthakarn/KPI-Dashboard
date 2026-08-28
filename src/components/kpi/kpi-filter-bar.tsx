@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import {
   addMonths,
@@ -32,6 +32,25 @@ function fromIsoDate(s: string): Date {
 
 function formatDisplayDate(d: Date): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+function parseDisplayDate(value: string, fallbackYear: number): Date | null {
+  const trimmed = value.trim();
+  const shortMatch = trimmed.match(/^(\d{2})(\d{2})$/);
+  const fullMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!shortMatch && !fullMatch) return null;
+  const day = Number((shortMatch ?? fullMatch)![1]);
+  const month = Number((shortMatch ?? fullMatch)![2]);
+  const year = shortMatch ? fallbackYear : Number(fullMatch![3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
 }
 
 const WEEKDAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
@@ -80,16 +99,23 @@ export function KpiFilterBar({
   const [draftEmployeeNames, setDraftEmployeeNames] = useState<string[]>(employeeNames);
   const [draftStart, setDraftStart] = useState<Date>(startDate);
   const [draftEnd, setDraftEnd] = useState<Date>(endDate);
+  const [draftStartValid, setDraftStartValid] = useState(true);
+  const [draftEndValid, setDraftEndValid] = useState(true);
+  const startInputRef = useRef<HTMLInputElement>(null);
+  const endInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setDraftShopIds(shopIds);
     setDraftEmployeeNames(employeeNames);
     setDraftStart(startDate);
     setDraftEnd(endDate);
+    setDraftStartValid(true);
+    setDraftEndValid(true);
   }, [shopIds, employeeNames, startDate, endDate]);
 
   const shopItems = shops.map((s) => ({ id: s.shopId, label: s.shopName }));
   function handleSearch() {
+    if (!draftStartValid || !draftEndValid) return;
     const shopNames = shops.filter((s) => draftShopIds.includes(s.shopId)).map((s) => s.shopName);
     onSearch({ shopIds: draftShopIds, shopNames, startDate: draftStart, endDate: draftEnd, employeeNames: draftEmployeeNames });
   }
@@ -119,11 +145,24 @@ export function KpiFilterBar({
         </div>
         <div className="min-w-0">
           <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">วันที่เริ่มต้น</label>
-          <DatePickerField value={draftStart} max={draftEnd} onChange={setDraftStart} />
+          <DatePickerField
+            value={draftStart}
+            max={draftEnd}
+            onChange={setDraftStart}
+            onValidityChange={setDraftStartValid}
+            inputRef={startInputRef}
+            onAdvance={() => endInputRef.current?.focus()}
+          />
         </div>
         <div className="min-w-0">
           <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">วันที่สิ้นสุด</label>
-          <DatePickerField value={draftEnd} min={draftStart} onChange={setDraftEnd} />
+          <DatePickerField
+            value={draftEnd}
+            min={draftStart}
+            onChange={setDraftEnd}
+            onValidityChange={setDraftEndValid}
+            inputRef={endInputRef}
+          />
         </div>
 
         <div className="flex items-center gap-2 md:col-span-2 xl:col-span-1 xl:pt-[21px]">
@@ -150,7 +189,7 @@ export function KpiFilterBar({
           </button>
           <button
             type="button"
-            disabled={isSearching}
+            disabled={isSearching || !draftStartValid || !draftEndValid}
             onClick={handleSearch}
             className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 xl:flex-none"
           >
@@ -168,18 +207,32 @@ function DatePickerField({
   min,
   max,
   onChange,
+  onValidityChange,
+  inputRef,
+  onAdvance,
 }: {
   value: Date;
   min?: Date;
   max?: Date;
   onChange: (date: Date) => void;
+  onValidityChange: (valid: boolean) => void;
+  inputRef: RefObject<HTMLInputElement>;
+  onAdvance?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState(value);
+  const [inputValue, setInputValue] = useState(() => formatDisplayDate(value));
+  const [inputInvalid, setInputInvalid] = useState(false);
 
   useEffect(() => {
     if (open) setViewMonth(value);
   }, [open, value]);
+
+  useEffect(() => {
+    setInputValue(formatDisplayDate(value));
+    setInputInvalid(false);
+    onValidityChange(true);
+  }, [onValidityChange, value]);
 
   const gridStart = startOfWeek(startOfMonth(viewMonth), { weekStartsOn: 0 });
   const gridEnd = endOfWeek(endOfMonth(viewMonth), { weekStartsOn: 0 });
@@ -195,20 +248,58 @@ function DatePickerField({
     setOpen(false);
   }
 
+  function applyTypedDate(): boolean {
+    const date = parseDisplayDate(inputValue, value.getFullYear());
+    if (!date || isDisabled(date)) {
+      setInputInvalid(true);
+      onValidityChange(false);
+      return false;
+    }
+    setInputInvalid(false);
+    onValidityChange(true);
+    setInputValue(formatDisplayDate(date));
+    onChange(date);
+    return true;
+  }
+
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "flex h-10 w-full min-w-[128px] items-center gap-2 rounded-lg border border-transparent bg-secondary px-3 text-left text-[12px] font-medium text-foreground transition-colors hover:border-brand-blue/40",
-            open && "border-brand-blue/40"
-          )}
-        >
-          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="tabular-nums">{formatDisplayDate(value)}</span>
-        </button>
-      </Popover.Trigger>
+      <div
+        className={cn(
+          "flex h-10 w-full min-w-[128px] items-center gap-2 rounded-lg border bg-secondary px-3 text-[12px] font-medium transition-colors",
+          inputInvalid ? "border-destructive" : "border-transparent",
+          open && !inputInvalid && "border-brand-blue/40"
+        )}
+      >
+        <Popover.Trigger asChild>
+          <button type="button" aria-label="เปิดปฏิทิน" className="rounded p-0.5 hover:bg-accent">
+            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </Popover.Trigger>
+        <input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            const parsed = parseDisplayDate(nextValue, value.getFullYear());
+            const valid = Boolean(parsed && !isDisabled(parsed));
+            setInputValue(nextValue);
+            setInputInvalid(!valid);
+            onValidityChange(valid);
+          }}
+          onBlur={applyTypedDate}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              if (applyTypedDate()) onAdvance?.();
+            }
+          }}
+          inputMode="numeric"
+          aria-label="กรอกวันที่"
+          placeholder="DD/MM/YYYY"
+          className="min-w-0 flex-1 bg-transparent tabular-nums outline-none placeholder:text-muted-foreground"
+        />
+      </div>
 
       <Popover.Portal>
         <Popover.Content

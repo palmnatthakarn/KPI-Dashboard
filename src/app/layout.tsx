@@ -19,8 +19,11 @@ const themeScript = `
 (function() {
   try {
     var stored = localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
-    var mode = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
-    var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+    var mode = stored === "light" || stored === "dark"
+      ? stored
+      : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    localStorage.setItem(${JSON.stringify(THEME_STORAGE_KEY)}, mode);
+    var dark = mode === "dark";
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.colorScheme = dark ? "dark" : "light";
   } catch (e) {

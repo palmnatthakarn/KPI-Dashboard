@@ -8,4 +8,4 @@
  */
 export const THEME_STORAGE_KEY = "vat-dashboard-theme";
 
-export type ThemeMode = "light" | "dark" | "system";
+export type ThemeMode = "light" | "dark";

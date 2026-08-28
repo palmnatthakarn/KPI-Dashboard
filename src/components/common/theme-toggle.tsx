@@ -1,20 +1,17 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useThemeStore, type ThemeMode } from "@/store/theme-store";
 
 const OPTIONS: { mode: ThemeMode; label: string; icon: typeof Sun }[] = [
   { mode: "light", label: "สว่าง", icon: Sun },
   { mode: "dark", label: "มืด", icon: Moon },
-  { mode: "system", label: "ตามระบบ", icon: Monitor },
 ];
 
 /**
- * Three-way theme control. A plain on/off switch would strand the user who
- * wants the app to follow their OS — "system" is the default, so it needs to
- * be reachable again after someone tries the other two.
- *
+ * Two-way theme control. On first use the store captures the OS preference,
+ * then this control keeps an explicit light/dark choice.
  * `collapsed` renders only the icon for the narrow sidebar rail.
  */
 export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
@@ -22,9 +19,8 @@ export function ThemeToggle({ collapsed = false }: { collapsed?: boolean }) {
   const setMode = useThemeStore((s) => s.setMode);
 
   if (collapsed) {
-    // Cycles light -> dark -> system so every mode stays reachable from the rail.
-    const next: ThemeMode = mode === "light" ? "dark" : mode === "dark" ? "system" : "light";
-    const current = OPTIONS.find((o) => o.mode === mode) ?? OPTIONS[2];
+    const next: ThemeMode = mode === "light" ? "dark" : "light";
+    const current = OPTIONS.find((o) => o.mode === mode) ?? OPTIONS[0];
     const Icon = current.icon;
     return (
       <button
