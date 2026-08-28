@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import {
   addMonths,
@@ -68,6 +68,25 @@ function toDisplay(iso: string): string {
   return format(parseISO(iso), "dd/MM/yyyy");
 }
 
+function parseDisplayDate(value: string, fallbackYear: number): Date | null {
+  const trimmed = value.trim();
+  const shortMatch = trimmed.match(/^(\d{2})(\d{2})$/);
+  const fullMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!shortMatch && !fullMatch) return null;
+  const day = Number((shortMatch ?? fullMatch)![1]);
+  const month = Number((shortMatch ?? fullMatch)![2]);
+  const year = shortMatch ? fallbackYear : Number(fullMatch![3]);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
 /** Popover calendar for picking a date range; only commits (and triggers a reload) once "ยืนยัน" is pressed. */
 export function DateRangePicker({
   value,
@@ -80,6 +99,16 @@ export function DateRangePicker({
   const [viewMonth, setViewMonth] = useState(() => (value ? parseISO(value.start) : new Date()));
   const [pendingStart, setPendingStart] = useState<Date | null>(value ? parseISO(value.start) : null);
   const [pendingEnd, setPendingEnd] = useState<Date | null>(value ? parseISO(value.end) : null);
+  const [startInput, setStartInput] = useState(() => (value ? toDisplay(value.start) : ""));
+  const [endInput, setEndInput] = useState(() => (value ? toDisplay(value.end) : ""));
+  const [inputInvalid, setInputInvalid] = useState(false);
+  const endInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setStartInput(value ? toDisplay(value.start) : "");
+    setEndInput(value ? toDisplay(value.end) : "");
+    setInputInvalid(false);
+  }, [value]);
 
   // Re-sync the calendar to the applied value every time the popover opens.
   useEffect(() => {
@@ -121,44 +150,89 @@ export function DateRangePicker({
     setOpen(false);
   }
 
+  const applyTypedRange = useCallback(() => {
+    const startYear = value ? parseISO(value.start).getFullYear() : new Date().getFullYear();
+    const endYear = value ? parseISO(value.end).getFullYear() : startYear;
+    const start = parseDisplayDate(startInput, startYear);
+    const end = parseDisplayDate(endInput, endYear);
+    if (!start || !end || isBefore(end, start)) {
+      setInputInvalid(true);
+      return false;
+    }
+    setInputInvalid(false);
+    setStartInput(toDisplay(toIso(start)));
+    setEndInput(toDisplay(toIso(end)));
+    onChange({ start: toIso(start), end: toIso(end) });
+    return true;
+  }, [endInput, onChange, startInput, value]);
+
   const gridStart = startOfWeek(startOfMonth(viewMonth), { weekStartsOn: 0 });
   const gridEnd = endOfWeek(endOfMonth(viewMonth), { weekStartsOn: 0 });
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "flex items-center gap-2 rounded-lg border border-transparent bg-secondary px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-brand-blue/40",
-            open && "border-brand-blue/40"
-          )}
-        >
-          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-          {value ? (
-            <span>
-              {toDisplay(value.start)} <span className="text-muted-foreground">–</span> {toDisplay(value.end)}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">เลือกช่วงวันที่</span>
-          )}
-          {value && (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label="ล้างช่วงวันที่"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange(null);
-              }}
-              className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </span>
-          )}
-        </button>
-      </Popover.Trigger>
+      <div
+        className={cn(
+          "flex items-center gap-1 rounded-lg border bg-secondary px-2 py-1.5 text-xs font-medium transition-colors",
+          inputInvalid ? "border-destructive" : "border-transparent",
+          open && !inputInvalid && "border-brand-blue/40"
+        )}
+      >
+        <Popover.Trigger asChild>
+          <button type="button" aria-label="เปิดปฏิทิน" className="rounded p-1 hover:bg-accent">
+            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </Popover.Trigger>
+        <input
+          value={startInput}
+          onChange={(event) => {
+            setStartInput(event.target.value);
+            setInputInvalid(false);
+          }}
+          onBlur={applyTypedRange}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              if (applyTypedRange()) endInputRef.current?.focus();
+            }
+          }}
+          inputMode="numeric"
+          aria-label="วันที่เริ่มต้น"
+          placeholder="DD/MM/YYYY"
+          className="w-[76px] bg-transparent text-center tabular-nums outline-none placeholder:text-muted-foreground"
+        />
+        <span className="text-muted-foreground">–</span>
+        <input
+          ref={endInputRef}
+          value={endInput}
+          onChange={(event) => {
+            setEndInput(event.target.value);
+            setInputInvalid(false);
+          }}
+          onBlur={applyTypedRange}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              applyTypedRange();
+            }
+          }}
+          inputMode="numeric"
+          aria-label="วันที่สิ้นสุด"
+          placeholder="DD/MM/YYYY"
+          className="w-[76px] bg-transparent text-center tabular-nums outline-none placeholder:text-muted-foreground"
+        />
+        {value && (
+          <button
+            type="button"
+            aria-label="ล้างช่วงวันที่"
+            onClick={() => onChange(null)}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
       <Popover.Portal>
         <Popover.Content
