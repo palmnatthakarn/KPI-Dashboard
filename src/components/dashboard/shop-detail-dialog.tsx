@@ -5,7 +5,11 @@ import * as Dialog from "@radix-ui/react-dialog";
 import Link from "next/link";
 import { X, Store } from "lucide-react";
 import { formatTHB } from "@/lib/utils";
-import { extractShopName, imageCount, totalDeposit, totalWithdraw, type DocDetails } from "@/types/shop";
+import {
+  countDocumentImageGroups,
+  type DocumentImage,
+} from "@/types/document-image";
+import { extractShopName, totalDeposit, totalWithdraw, type DocDetails } from "@/types/shop";
 import { ImageGalleryDialog } from "@/components/documents/image-gallery-dialog";
 
 /**
@@ -14,7 +18,15 @@ import { ImageGalleryDialog } from "@/components/documents/image-gallery-dialog"
  * image_gallery_dialog.dart, triggered via showDialog in the Flutter
  * source — there's no standalone "Documents" route/page in the app).
  */
-export function ShopDetailDialog({ shop, onClose }: { shop: DocDetails; onClose: () => void }) {
+export function ShopDetailDialog({
+  shop,
+  uploadedImages,
+  onClose,
+}: {
+  shop: DocDetails;
+  uploadedImages: DocumentImage[];
+  onClose: () => void;
+}) {
   const shopId = shop.shopid ?? "";
   const name = extractShopName(shop, shopId);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -45,7 +57,10 @@ export function ShopDetailDialog({ shop, onClose }: { shop: DocDetails; onClose:
             <Row label="รายวันเฉลี่ย" value={formatTHB(shop.dailyAverage ?? 0)} />
             <Row label="รายเดือนเฉลี่ย" value={formatTHB(shop.monthlyAverage ?? 0)} />
             <Row label="รายปี" value={formatTHB(shop.yearlyAverage ?? 0)} />
-            <Row label="จำนวนบิล" value={`${imageCount(shop)} บิล`} />
+            <Row
+              label="รูปที่อัปโหลด"
+              value={`${countDocumentImageGroups(uploadedImages)} รูป`}
+            />
           </dl>
 
           {shop.responsible?.name && (
@@ -73,7 +88,13 @@ export function ShopDetailDialog({ shop, onClose }: { shop: DocDetails; onClose:
         </Dialog.Content>
       </Dialog.Portal>
 
-      {galleryOpen && <ImageGalleryDialog shopId={shopId} shopName={name || shopId} onClose={() => setGalleryOpen(false)} />}
+      {galleryOpen && (
+        <ImageGalleryDialog
+          shopName={name || shopId}
+          images={uploadedImages}
+          onClose={() => setGalleryOpen(false)}
+        />
+      )}
     </Dialog.Root>
   );
 }

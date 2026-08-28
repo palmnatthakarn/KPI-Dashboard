@@ -1,3 +1,4 @@
 allowBuilds:
+  canvas: false
   protobufjs: true
   unrs-resolver: true

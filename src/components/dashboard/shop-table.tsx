@@ -12,7 +12,8 @@ import {
   STATUS_COLORS,
   yearlyAmount,
 } from "@/lib/dashboard/dashboard-helper";
-import { extractShopName, imageCount, type DocDetails } from "@/types/shop";
+import type { DocumentImage } from "@/types/document-image";
+import { extractShopName, type DocDetails } from "@/types/shop";
 
 const STATUS_ICON = { safe: CheckCircle2, warning: AlertTriangle, exceeded: XCircle } as const;
 const STATUS_LABEL = { safe: "ปกติ", warning: "เฝ้าระวัง", exceeded: "เกินเกณฑ์" } as const;
@@ -32,7 +33,15 @@ function dailyAmount(shop: DocDetails): number {
 }
 
 /** Ported from ShopDataTable + BranchDataSource (shop_data_table.dart / branch_data_source.dart). */
-export function ShopTable({ shops }: { shops: DocDetails[] }) {
+export function ShopTable({
+  shops,
+  uploadedImageCounts,
+  uploadedImagesByShop,
+}: {
+  shops: DocDetails[];
+  uploadedImageCounts: Record<string, number>;
+  uploadedImagesByShop: Record<string, DocumentImage[]>;
+}) {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedShop, setSelectedShop] = useState<DocDetails | null>(null);
@@ -111,11 +120,12 @@ export function ShopTable({ shops }: { shops: DocDetails[] }) {
       },
     },
     {
-      id: "bills",
-      header: "บิล",
+      id: "uploaded-images",
+      header: "รูปที่อัปโหลด",
       align: "right",
       cell: (shop) => {
-        const bills = imageCount(shop);
+        const shopName = extractShopName(shop, shop.shopid ?? "");
+        const uploadedCount = uploadedImageCounts[shopName.trim().toLowerCase()] ?? 0;
         return (
           <button
             type="button"
@@ -125,11 +135,11 @@ export function ShopTable({ shops }: { shops: DocDetails[] }) {
             }}
             className={
               "ml-auto flex items-center gap-1 rounded font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-              (bills > 0 ? "text-status-safe-strong" : "text-muted-foreground")
+              (uploadedCount > 0 ? "text-status-safe-strong" : "text-muted-foreground")
             }
           >
             <ImageIcon className="h-3.5 w-3.5" />
-            {bills} บิล
+            {uploadedCount} รูป
           </button>
         );
       },
@@ -159,11 +169,25 @@ export function ShopTable({ shops }: { shops: DocDetails[] }) {
         }}
       />
 
-      {selectedShop && <ShopDetailDialog shop={selectedShop} onClose={() => setSelectedShop(null)} />}
+      {selectedShop && (
+        <ShopDetailDialog
+          shop={selectedShop}
+          uploadedImages={
+            uploadedImagesByShop[
+              extractShopName(selectedShop, selectedShop.shopid ?? "").trim().toLowerCase()
+            ] ?? []
+          }
+          onClose={() => setSelectedShop(null)}
+        />
+      )}
       {galleryShop && (
         <ImageGalleryDialog
-          shopId={galleryShop.shopid ?? ""}
           shopName={extractShopName(galleryShop, galleryShop.shopid ?? "")}
+          images={
+            uploadedImagesByShop[
+              extractShopName(galleryShop, galleryShop.shopid ?? "").trim().toLowerCase()
+            ] ?? []
+          }
           onClose={() => setGalleryShop(null)}
         />
       )}

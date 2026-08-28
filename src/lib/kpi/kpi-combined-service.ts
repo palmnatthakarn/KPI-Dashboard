@@ -2,9 +2,11 @@ import { listShops as listShopsRaw } from "@/lib/api/multi-shop-service";
 import { fetchTasksForShop } from "@/lib/api/task-service";
 import { getAllGLJournals } from "@/lib/api/journal-service";
 import {
+  fetchDocumentImageGroupImages,
   fetchDocNoToTaskGuidMap,
   fetchShopActiveDocumentCount,
   fetchShopBillCount,
+  type DocNoToTaskGuidMapResult,
 } from "@/lib/api/document-image-service";
 import { saveKnownEmployees } from "@/lib/employee/employee-mapping-service";
 import { reconcileKpiEmployees, type ShopFetchResult } from "@/lib/kpi/kpi-reconcile";
@@ -108,20 +110,78 @@ async function fetchShopData(shopId: string, shopName: string, startDate: Date, 
 
   // None of these three call selectShop themselves, so they're safe to run concurrently
   // once the shop has been selected by fetchTasksForShop above.
-  const [glResult, docNoMapResult, billCount, activeDocumentCount] = await Promise.all([
+  const [glResult, billCount, activeDocumentCount] = await Promise.all([
     fetchAllGLJournalsForShop(shopId, startIso, endIso),
-    // Keep this lookup undated, matching the monitor app. The selected KPI
-    // range applies to task/journal activity; filtering image groups by
-    // upload date can remove the evidence for an otherwise in-range task.
-    fetchDocNoToTaskGuidMap({}).catch(() => ({
-      docNoToTaskGuid: new Map<string, string>(),
-      taskUploaderCounts: new Map<string, Map<string, number>>(),
-      totalItemsSeen: 0,
-      apiReportedTotal: null,
-    })),
     fetchShopBillCount({ fromDate: startIso, toDate: endIso }).catch(() => 0),
     fetchShopActiveDocumentCount({ fromDate: startIso, toDate: endIso }).catch(() => 0),
   ]);
+
+  const docNoMapResult: DocNoToTaskGuidMapResult = {
+    docNoToTaskGuid: new Map(),
+    taskUploaderCounts: new Map(),
+    taskUploadedImages: new Map(),
+    documentRefUploadedImages: new Map(),
+    totalItemsSeen: 0,
+    apiReportedTotal: 0,
+  };
+
+  // A document group can contain several physical files in imagereferences.
+  // Query each task explicitly because the unfiltered endpoint can return a
+  // group summary that does not consistently contain every grouped image.
+  const taskGuids = [...new Set(tasks.map((task) => task.guidfixed.trim()).filter(Boolean))];
+  const taskImageResults = await Promise.all(
+    taskGuids.map((taskGuid) =>
+      fetchDocNoToTaskGuidMap({ perPage: 1000, taskGuid }).catch(() => null)
+    )
+  );
+  for (const result of taskImageResults) {
+    if (!result) continue;
+    result.docNoToTaskGuid.forEach((taskGuid, docNo) => {
+      docNoMapResult.docNoToTaskGuid.set(docNo, taskGuid);
+    });
+    result.taskUploaderCounts.forEach((counts, taskGuid) => {
+      docNoMapResult.taskUploaderCounts.set(taskGuid, counts);
+    });
+    result.taskUploadedImages.forEach((images, taskGuid) => {
+      const unique = new Map<string, (typeof images)[number]>();
+      for (const image of [...(docNoMapResult.taskUploadedImages.get(taskGuid) ?? []), ...images]) {
+        const key =
+          image.imageId ??
+          image.imageUrl ??
+          `${image.uploadedBy ?? ""}|${image.uploadedAt ?? ""}|${image.description ?? ""}`;
+        unique.set(key, image);
+      }
+      docNoMapResult.taskUploadedImages.set(taskGuid, [...unique.values()]);
+    });
+    result.documentRefUploadedImages.forEach((images, documentRef) => {
+      docNoMapResult.documentRefUploadedImages.set(documentRef, images);
+    });
+    docNoMapResult.totalItemsSeen += result.totalItemsSeen;
+    docNoMapResult.apiReportedTotal =
+      (docNoMapResult.apiReportedTotal ?? 0) + (result.apiReportedTotal ?? 0);
+  }
+
+  // Direct GL uploads may not belong to any task and therefore may be absent
+  // from the task-oriented /documentimagegroup list. Resolve every journal
+  // documentref through /documentimagegroup/{documentref} so Overview and its
+  // popup include the same real image records.
+  const journalDocumentRefs = [
+    ...new Set(
+      glResult.journals
+        .map((journal) => (journal.documentref ?? "").trim())
+        .filter(Boolean)
+    ),
+  ];
+  await Promise.all(
+    journalDocumentRefs.map(async (documentRef) => {
+      const key = documentRef.toLowerCase();
+      if (docNoMapResult.documentRefUploadedImages.has(key)) return;
+      const images = await fetchDocumentImageGroupImages(documentRef);
+      if (images.length > 0) {
+        docNoMapResult.documentRefUploadedImages.set(key, images);
+      }
+    })
+  );
 
   return {
     shopName,
@@ -129,6 +189,8 @@ async function fetchShopData(shopId: string, shopName: string, startDate: Date, 
     journals: glResult.journals,
     docNoToTaskGuid: docNoMapResult.docNoToTaskGuid,
     taskUploaderCounts: docNoMapResult.taskUploaderCounts,
+    taskUploadedImages: docNoMapResult.taskUploadedImages,
+    documentRefUploadedImages: docNoMapResult.documentRefUploadedImages,
     billCount,
     activeDocumentCount,
     complete: taskFetchOk && glResult.complete,
@@ -183,7 +245,7 @@ function withFetchGate<T>(work: () => Promise<T>): Promise<T> {
 
 function cacheKey(shopIds: string[], startDate: Date, endDate: Date): string {
   const sorted = [...shopIds].sort().join(",");
-  return `${sorted}|${toIsoDate(startDate)}|${toIsoDate(endDate)}`;
+  return `uploaded-images-task-gl-v3|${sorted}|${toIsoDate(startDate)}|${toIsoDate(endDate)}`;
 }
 
 export interface FetchKpiCombinedParams {
