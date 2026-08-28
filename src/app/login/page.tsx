@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { ArrowRight, BarChart3, CheckCircle2, Loader2, LockKeyhole, ShieldCheck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 
 function GoogleIcon() {
@@ -31,11 +32,8 @@ function GoogleIcon() {
 /**
  * Sign-in screen.
  *
- * Deliberately plain: this is an internal tool whose users sign in with the
- * same account every morning, so the page is optimised for getting out of the
- * way, not for persuading anyone. The previous version carried a marketing
- * hero with three floating cards and three animated blur blobs — continuous
- * compositing work on a screen nobody reads twice.
+ * Sign-in stays operational and direct, with lightweight motion to make the
+ * first screen feel alive without slowing down the morning login flow.
  */
 export default function LoginPage() {
   const router = useRouter();
@@ -55,49 +53,123 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-5 py-10">
-      <div className="w-full max-w-sm">
-        <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
-          <div className="flex flex-col items-center text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-navy text-white">
-              <ShieldCheck className="h-6 w-6" />
-            </span>
-            <h1 className="mt-5 text-xl font-semibold tracking-tight text-foreground">
-              VAT Dashboard
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              ระบบติดตามสถานะภาษีมูลค่าเพิ่ม
-            </p>
-          </div>
+    <main className="min-h-screen bg-background px-5 py-8 text-foreground sm:px-8 lg:px-10">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center">
+        <div className="login-shell grid w-full overflow-hidden rounded-3xl border border-border bg-card shadow-sm lg:grid-cols-[1.08fr_0.92fr]">
+          <section className="relative hidden min-h-[620px] overflow-hidden border-r border-border bg-primary p-10 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-primary-foreground/25" />
 
-          {error && (
-            <div
-              role="alert"
-              className="mt-6 rounded-lg border border-status-exceeded/30 bg-status-exceeded-soft px-4 py-3 text-sm leading-6 text-status-exceeded-strong"
-            >
-              {error}
+            <div className="login-hero-content relative">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-1 text-xs font-medium text-primary-foreground/80 shadow-sm">
+                <span className="login-status-dot h-1.5 w-1.5 rounded-full bg-status-safe-strong" />
+                Internal status monitor
+              </div>
+
+              <div className="mt-10 max-w-xl">
+                <div className="login-shield flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-foreground text-primary shadow-sm">
+                  <ShieldCheck className="h-7 w-7" />
+                </div>
+                <h1 className="mt-8 text-4xl font-bold tracking-tight text-primary-foreground">
+                  KPI Dashboard
+                </h1>
+                <p className="mt-4 text-base leading-7 text-primary-foreground/70">
+                  ระบบติดตาม KPI งานเอกสารและการบันทึกบัญชีของทุกสาขา สำหรับตรวจงานประจำวันให้เร็วและแม่นขึ้น
+                </p>
+              </div>
             </div>
-          )}
 
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={isSubmitting}
-            className="mt-7 flex w-full items-center justify-center gap-3 rounded-lg border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : (
-              <GoogleIcon />
-            )}
-            <span>{isSubmitting ? "กำลังเชื่อมต่อกับ Google..." : "เข้าสู่ระบบด้วย Google"}</span>
-          </button>
+            <div className="relative grid grid-cols-3 gap-3">
+              <InfoTile icon={BarChart3} label="Overview" value="สรุปสถานะ" delay="0ms" />
+              <InfoTile icon={CheckCircle2} label="KPI" value="ติดตามงาน" delay="90ms" />
+              <InfoTile icon={LockKeyhole} label="Access" value="Google only" delay="180ms" />
+            </div>
+          </section>
 
-          <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
-            ใช้บัญชี Google ที่ได้รับอนุญาตเท่านั้น
-          </p>
+          <section className="flex min-h-[620px] items-center justify-center p-6 sm:p-10">
+            <div className="login-signin-panel w-full max-w-md">
+              <div className="lg:hidden">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <ShieldCheck className="h-6 w-6" />
+                </span>
+              </div>
+
+              <div className="mt-8 lg:mt-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Secure sign in
+                </p>
+                <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground">
+                  เข้าสู่ระบบเพื่อดู Dashboard
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  ใช้บัญชี Google ที่ได้รับอนุญาตจากระบบเท่านั้น
+                </p>
+              </div>
+
+              {error && (
+                <div
+                  role="alert"
+                  className="mt-6 rounded-xl border border-status-exceeded/30 bg-status-exceeded-soft px-4 py-3 text-sm leading-6 text-status-exceeded-strong"
+                >
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={isSubmitting}
+                className="group mt-7 flex h-12 w-full items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
+              >
+                <span className="flex items-center gap-3">
+                  {isSubmitting ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  ) : (
+                    <GoogleIcon />
+                  )}
+                  <span>{isSubmitting ? "กำลังเชื่อมต่อกับ Google..." : "เข้าสู่ระบบด้วย Google"}</span>
+                </span>
+                {!isSubmitting && (
+                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                )}
+              </button>
+
+              <div className="mt-6 rounded-xl border border-border bg-secondary/60 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    การเข้าสู่ระบบจะตรวจสอบสิทธิ์ผ่าน Google
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </main>
+  );
+}
+
+function InfoTile({
+  icon: Icon,
+  label,
+  value,
+  delay,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  delay: string;
+}) {
+  return (
+    <div
+      className="login-info-tile rounded-2xl border border-primary-foreground/15 bg-primary-foreground/10 p-4 backdrop-blur transition-colors hover:bg-primary-foreground/15"
+      style={{ animationDelay: delay }}
+    >
+      <Icon className="h-5 w-5 text-primary-foreground/80" />
+      <p className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-primary-foreground/50">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold text-primary-foreground">{value}</p>
+    </div>
   );
 }

@@ -126,4 +126,97 @@
   .glass-control {
     @apply border border-border bg-card/70 shadow-sm backdrop-blur;
   }
+
+  .login-shell {
+    animation: login-panel-in 520ms ease-out both;
+  }
+
+  .login-hero-content {
+    animation: login-rise-in 620ms ease-out 90ms both;
+  }
+
+  .login-signin-panel {
+    animation: login-rise-in 620ms ease-out 180ms both;
+  }
+
+  .login-info-tile {
+    animation: login-card-in 560ms ease-out both;
+  }
+
+  .login-status-dot {
+    animation: login-status-pulse 1800ms ease-in-out infinite;
+  }
+
+  .login-shield {
+    animation: login-float 4200ms ease-in-out infinite;
+  }
+}
+
+@keyframes login-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-status-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--status-safe) / 0.35);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px hsl(var(--status-safe) / 0);
+  }
+}
+
+@keyframes login-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-shell,
+  .login-hero-content,
+  .login-signin-panel,
+  .login-info-tile,
+  .login-status-dot,
+  .login-shield {
+    animation: none;
+  }
 }

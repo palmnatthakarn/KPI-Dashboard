@@ -99,7 +99,13 @@ export function StatTile({
       {error ? (
         <p className="mt-3 text-xs font-medium text-status-exceeded-strong">{error}</p>
       ) : loading ? (
-        <div className="mt-3 h-8 w-24 animate-pulse rounded-lg bg-secondary" />
+        <div className="mt-3" role="status" aria-label={`กำลังโหลด${label}`}>
+          <div className="h-8 w-24 animate-pulse rounded-lg bg-secondary" />
+          <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-secondary">
+            <div className="h-full w-2/3 animate-pulse rounded-full bg-info-strong" />
+          </div>
+          <span className="sr-only">กำลังโหลดข้อมูล...</span>
+        </div>
       ) : (
         <div className="mt-3 flex items-baseline gap-2">
           <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
