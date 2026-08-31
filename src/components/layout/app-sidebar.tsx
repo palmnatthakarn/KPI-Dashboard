@@ -79,7 +79,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
             onClick={() => {
               if (collapsed) onToggleCollapse();
             }}
-            aria-label={collapsed ? "ขยายเมนู" : "VAT Dashboard"}
+            aria-label={collapsed ? "ขยายเมนู" : "KPI Dashboard"}
             title={collapsed ? "ขยายเมนู" : undefined}
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 font-semibold text-primary-foreground shadow-md transition",
@@ -90,8 +90,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
           </button>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">VAT Dashboard</p>
-              <p className="truncate text-xs text-muted-foreground">Status Monitor</p>
+              <p className="truncate text-sm font-semibold text-foreground">KPI Dashboard</p>
+              <p className="truncate text-xs text-muted-foreground">KPI Monitor</p>
             </div>
           )}
           {!collapsed && (

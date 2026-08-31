@@ -4,8 +4,8 @@ import { Providers } from "./providers";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 
 export const metadata: Metadata = {
-  title: "VAT Dashboard Status Monitor",
-  description: "ระบบติดตามสถานะภาษีมูลค่าเพิ่ม (VAT) พร้อมระบบอนุมัติไฟล์แบบ Real-time",
+  title: "KPI Dashboard",
+  description: "ระบบติดตาม KPI งานเอกสารและการบันทึกบัญชี พร้อมสรุปผลการทำงานแบบ Real-time",
 };
 
 /**

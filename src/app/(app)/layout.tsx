@@ -81,7 +81,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
           <button onClick={() => setMobileOpen(true)} aria-label="เปิดเมนู">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-sm font-semibold">VAT Dashboard Monitor</span>
+          <span className="text-sm font-semibold">KPI Dashboard</span>
         </header>
 
         <main className="flex-1 p-3 md:p-4 lg:p-5 2xl:p-6">{children}</main>
