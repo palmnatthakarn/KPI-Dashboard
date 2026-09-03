@@ -150,6 +150,20 @@
   .login-shield {
     animation: login-float 4200ms ease-in-out infinite;
   }
+
+  .login-title-sweep {
+    color: transparent;
+    background: linear-gradient(
+      110deg,
+      hsl(var(--foreground)) 28%,
+      hsl(var(--muted-foreground)) 43%,
+      hsl(var(--foreground)) 58%
+    );
+    background-size: 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: login-title-sweep 3600ms ease-in-out infinite;
+  }
 }
 
 @keyframes login-panel-in {
@@ -210,13 +224,26 @@
   }
 }
 
+@keyframes login-title-sweep {
+  0%,
+  20% {
+    background-position: 100% 50%;
+  }
+
+  80%,
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .login-shell,
   .login-hero-content,
   .login-signin-panel,
   .login-info-tile,
   .login-status-dot,
-  .login-shield {
+  .login-shield,
+  .login-title-sweep {
     animation: none;
   }
 }
