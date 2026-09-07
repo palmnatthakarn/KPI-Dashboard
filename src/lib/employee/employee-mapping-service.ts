@@ -64,8 +64,11 @@ function parseCloudData(data: DocumentData | undefined): Pick<EmployeeMappingSta
           .filter(([, displayName]) => Boolean(displayName))
       )
     : {};
-  const knownNames = Array.isArray(data?.knownNames)
-    ? Array.from(new Set(data.knownNames.map(String).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  // `knownNames` historically mixed task owners, uploaders, reviewers,
+  // editors, and migrated browser data. Only `knownKeyers` represents
+  // people who actually keyed journals.
+  const knownNames = Array.isArray(data?.knownKeyers)
+    ? Array.from(new Set(data.knownKeyers.map(String).filter(Boolean))).sort((a, b) => a.localeCompare(b))
     : [];
   return { mappings, knownNames };
 }
@@ -162,7 +165,7 @@ export async function saveMapping(username: string, displayName: string): Promis
   if (!trimmed) return removeMapping(username);
   await setDoc(
     SETTINGS_DOCUMENT,
-    { mappings: { [username]: trimmed }, knownNames: arrayUnion(username), updatedAt: new Date() },
+    { mappings: { [username]: trimmed }, updatedAt: new Date() },
     { merge: true }
   );
 }
@@ -184,12 +187,15 @@ export async function saveKnownEmployees(names: string[]): Promise<void> {
   await ensureFirebaseSession();
   await setDoc(
     SETTINGS_DOCUMENT,
-    { knownNames: arrayUnion(...uniqueNames), updatedAt: new Date() },
+    { knownKeyers: arrayUnion(...uniqueNames), updatedAt: new Date() },
     { merge: true }
   );
 }
 
 export async function clearAllEmployeeMappings(): Promise<void> {
   await ensureFirebaseSession();
-  await setDoc(SETTINGS_DOCUMENT, { mappings: {}, knownNames: [], updatedAt: new Date() });
+  await setDoc(
+    SETTINGS_DOCUMENT,
+    { mappings: {}, knownNames: [], knownKeyers: [], updatedAt: new Date() }
+  );
 }

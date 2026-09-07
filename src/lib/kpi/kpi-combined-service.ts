@@ -327,7 +327,15 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
       cache.set(key, { employees, activeDocumentTotal, expiresAt: Date.now() + CACHE_TTL_MS });
     }
 
-    void saveKnownEmployees(employees.map((e) => e.name)).catch((error) =>
+    const knownKeyers = Array.from(
+      new Set(
+        shopResults.flatMap((shop) =>
+          shop.journals.map((journal) => (journal.createdby ?? "").trim()).filter(Boolean)
+        )
+      )
+    );
+
+    void saveKnownEmployees(knownKeyers).catch((error) =>
       console.error("Unable to save known employees", error)
     );
 
