@@ -4,7 +4,6 @@ import {
   fetchMultiShopSummary,
   getCurrentYearDateRange,
 } from "@/lib/api/multi-shop-service";
-import { fetchDashboardData } from "@/lib/dashboard/dashboard-service";
 import type { DocDetails, ShopName } from "@/types/shop";
 
 /**
@@ -12,20 +11,33 @@ import type { DocDetails, ShopName } from "@/types/shop";
  * the Dashboard page talks to. Never call multi-shop-service / dashboard-service
  * directly from a component.
  */
-export async function fetchShopsSummary(startDate?: string, endDate?: string): Promise<DocDetails[]> {
+export async function fetchShopsSummary(
+  startDate?: string,
+  endDate?: string
+): Promise<DocDetails[]> {
   if (!getToken()) {
-    return fetchDashboardData();
+    throw new Error("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
   }
 
   try {
     const shopList = await listShops();
     const shopNamesMap = buildNamesMap(shopList);
 
-    const range = startDate && endDate ? { startDate, endDate } : getCurrentYearDateRange();
-    const response = await fetchMultiShopSummary(range.startDate, range.endDate);
+    const range =
+      startDate && endDate
+        ? { startDate, endDate }
+        : getCurrentYearDateRange();
+    const response = await fetchMultiShopSummary(
+      range.startDate,
+      range.endDate
+    );
 
-    if (response.success && response.shops.length > 0) {
-      return response.shops.map((shop): DocDetails => ({
+    if (!response.success) {
+      throw new Error(response.message || "ไม่สามารถโหลดข้อมูล Dashboard ได้");
+    }
+
+    return response.shops.map(
+      (shop): DocDetails => ({
         shopid: shop.shopCode,
         shopname: shop.shopName,
         names: shopNamesMap[shop.shopCode],
@@ -43,16 +55,17 @@ export async function fetchShopsSummary(startDate?: string, endDate?: string): P
         monthlyAverage: shop.monthlyAverage,
         yearlyAverage: shop.yearlyAverage,
         localImageCount: shop.imageCount,
-      }));
-    }
-  } catch {
-    // fall through to local fallback, mirrors ShopRepository's try/catch
+      })
+    );
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error("ไม่สามารถโหลดข้อมูล Dashboard ได้");
   }
-
-  return fetchDashboardData();
 }
 
-function buildNamesMap(shopList: Record<string, any>[]): Record<string, ShopName[]> {
+function buildNamesMap(
+  shopList: Record<string, any>[]
+): Record<string, ShopName[]> {
   const map: Record<string, ShopName[]> = {};
   for (const shop of shopList) {
     const shopId = (shop.shopid ?? shop.shop_id ?? shop.id)?.toString();

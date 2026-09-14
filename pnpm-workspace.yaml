@@ -1,4 +1,9 @@
 allowBuilds:
   canvas: false
+  esbuild: true
   protobufjs: true
   unrs-resolver: true
+
+overrides:
+  nanoid@<3.3.18: 3.3.18
+  postcss@<=8.5.17: 8.5.28

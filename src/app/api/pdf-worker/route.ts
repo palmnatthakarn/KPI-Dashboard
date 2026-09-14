@@ -11,7 +11,7 @@ export async function GET() {
       "node_modules",
       "pdfjs-dist",
       "build",
-      "pdf.worker.min.js"
+      "pdf.worker.min.mjs"
     );
     const worker = await readFile(workerPath);
 
@@ -19,6 +19,7 @@ export async function GET() {
       headers: {
         "Content-Type": "text/javascript; charset=utf-8",
         "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {
