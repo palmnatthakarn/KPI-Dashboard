@@ -4,6 +4,7 @@ import {
   clearToken,
   getToken,
   getUsername,
+  isTokenExpired,
   isTokenExpiredOrExpiring,
 } from "@/lib/auth/token-storage";
 
@@ -62,6 +63,12 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
     try {
       const token = getToken();
       if (!token) {
+        set({ status: "unauthenticated", username: null, error: null });
+        return;
+      }
+
+      if (isTokenExpired()) {
+        clearToken();
         set({ status: "unauthenticated", username: null, error: null });
         return;
       }

@@ -31,6 +31,15 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+export function getTokenExpiryMs(): number | null {
+  if (typeof window === "undefined") return null;
+  const expiry = localStorage.getItem(EXPIRY_KEY);
+  if (!expiry) return null;
+
+  const parsedExpiry = Number(expiry);
+  return Number.isFinite(parsedExpiry) ? parsedExpiry : null;
+}
+
 export function saveRefreshToken(refreshToken: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
@@ -66,8 +75,13 @@ export function clearToken() {
  * auth_repository.dart ("assuming token is valid, let server decide").
  */
 export function isTokenExpiredOrExpiring(): boolean {
-  if (typeof window === "undefined") return false;
-  const expiry = localStorage.getItem(EXPIRY_KEY);
-  if (!expiry) return false;
-  return Date.now() >= Number(expiry) - REFRESH_BUFFER_MS;
+  const expiry = getTokenExpiryMs();
+  if (expiry == null) return false;
+  return Date.now() >= expiry - REFRESH_BUFFER_MS;
+}
+
+export function isTokenExpired(): boolean {
+  const expiry = getTokenExpiryMs();
+  if (expiry == null) return false;
+  return Date.now() >= expiry;
 }

@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { Menu } from "lucide-react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useAuthStore } from "@/store/auth-store";
+import { getTokenExpiryMs, isTokenExpired } from "@/lib/auth/token-storage";
 import { startEmployeeMappingsSync } from "@/lib/employee/employee-mapping-service";
+
+const MAX_TIMEOUT_MS = 2_147_483_647;
 
 /**
  * Route-group shell for all authenticated pages.
@@ -19,9 +22,51 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    void checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let timeoutId: number | undefined;
+    let checking = false;
+    let cancelled = false;
+
+    function scheduleExpiryCheck() {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+
+      const expiry = getTokenExpiryMs();
+      if (expiry == null) return;
+
+      const delay = Math.min(Math.max(expiry - Date.now(), 0), MAX_TIMEOUT_MS);
+      timeoutId = window.setTimeout(checkExpiredToken, delay);
+    }
+
+    function checkExpiredToken() {
+      if (isTokenExpired()) void validateAuth();
+      else scheduleExpiryCheck();
+    }
+
+    async function validateAuth() {
+      if (checking || cancelled) return;
+      checking = true;
+      try {
+        await checkAuth();
+      } finally {
+        checking = false;
+        if (!cancelled) scheduleExpiryCheck();
+      }
+    }
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") checkExpiredToken();
+    }
+
+    void validateAuth();
+    window.addEventListener("focus", checkExpiredToken);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      window.removeEventListener("focus", checkExpiredToken);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [checkAuth]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login");
