@@ -2,13 +2,44 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Assumed prototype data model:
+    // /settings/employeeMappings {
+    //   mappings?: map,
+    //   knownNames?: list,   // legacy clients
+    //   knownKeyers?: list,  // current clients
+    //   updatedAt: timestamp
+    // }
+    //
+    // The app currently uses Firebase anonymous authentication, so any
+    // authenticated session is trusted for compatibility. This is not an
+    // authorization boundary between individual users or roles.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Keep the shared prototype document comfortably below Firestore's 1 MiB
+    // document limit while allowing a realistic number of employees.
+    function isValidEmployeeMappings(data) {
+      return data.keys().hasOnly([
+          'mappings',
+          'knownNames',
+          'knownKeyers',
+          'updatedAt'
+        ])
+        && data.keys().hasAll(['updatedAt'])
+        && data.updatedAt is timestamp
+        && (!('mappings' in data)
+          || (data.mappings is map && data.mappings.size() <= 500))
+        && (!('knownNames' in data)
+          || (data.knownNames is list && data.knownNames.size() <= 500))
+        && (!('knownKeyers' in data)
+          || (data.knownKeyers is list && data.knownKeyers.size() <= 500));
+    }
+
     match /settings/employeeMappings {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && request.resource.data.keys().hasOnly(['mappings', 'knownNames', 'updatedAt'])
-        && request.resource.data.mappings is map
-        && request.resource.data.knownNames is list
-        && request.resource.data.updatedAt is timestamp;
+      allow get: if isAuthenticated();
+      allow create, update: if isAuthenticated()
+        && isValidEmployeeMappings(request.resource.data);
     }
   }
 }
