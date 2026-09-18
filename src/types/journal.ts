@@ -38,6 +38,11 @@ export interface JournalPagination {
   per_page?: number;
   total?: number;
   total_pages?: number;
+  /** Actual shape returned by GET /gl/journal (camelCase, unlike GET /journals above). */
+  perPage?: number;
+  totalPage?: number;
+  prev?: number;
+  next?: number;
 }
 
 export interface JournalSummary {

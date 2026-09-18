@@ -51,8 +51,12 @@ export async function listKpiShops(): Promise<KpiCombinedShopItem[]> {
 
 const GL_JOURNAL_PAGE_LIMIT = 1000;
 
-/** Ported from JournalService.getAllGLJournals's pagination loop inside the bloc. */
-async function fetchAllGLJournalsForShop(shopId: string, startDate: string, endDate: string) {
+/**
+ * Ported from JournalService.getAllGLJournals's pagination loop inside the bloc.
+ * Exported only for the pagination-continuation regression test — not part of
+ * the module's intended public API otherwise.
+ */
+export async function fetchAllGLJournalsForShop(shopId: string, startDate: string, endDate: string) {
   const journals: import("@/types/journal").Journal[] = [];
   let page = 1;
   let complete = true;
@@ -86,7 +90,13 @@ async function fetchAllGLJournalsForShop(shopId: string, startDate: string, endD
     const items = pageData.data ?? [];
     journals.push(...items);
 
-    const totalPages = pageData.pagination?.total_pages ?? 1;
+    // GET /gl/journal returns pagination.totalPage (camelCase), not the
+    // total_pages the type shares with GET /journals — reading the wrong
+    // field silently defaulted totalPages to 1, which stopped this loop
+    // after page 1 and dropped any journals beyond the first
+    // GL_JOURNAL_PAGE_LIMIT (sorted by docdate desc, so older-dated entries
+    // that were only recently keyed were the ones getting cut off).
+    const totalPages = pageData.pagination?.totalPage ?? pageData.pagination?.total_pages ?? 1;
     if (items.length < GL_JOURNAL_PAGE_LIMIT || page >= totalPages) break;
     page++;
   }
