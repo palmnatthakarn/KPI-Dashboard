@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchKpiCombinedData, getCurrentMonthRange, listKpiShops } from "@/lib/kpi/kpi-combined-service";
-import { getKnownEmployees } from "@/lib/employee/employee-mapping-service";
+import { useKnownEmployees } from "@/lib/employee/employee-mapping-service";
 import type { KpiCombinedEmployee, KpiCombinedShopItem } from "@/types/kpi-combined";
 
 /**
@@ -26,11 +26,10 @@ function defaultFilters(): KpiFilters {
 }
 
 export function useKpiCombined() {
-  const queryClient = useQueryClient();
   const [filters, setFilters] = useState<KpiFilters>(defaultFilters);
   const [hasSearched, setHasSearched] = useState(false);
-  const [forceRefreshToken, setForceRefreshToken] = useState(0);
-  const [knownEmployeeNames, setKnownEmployeeNames] = useState<string[]>(() => getKnownEmployees());
+  const forceRefreshRef = useRef(false);
+  const knownEmployeeNames = useKnownEmployees();
 
   const shopsQuery = useQuery({
     queryKey: ["kpi-shops"],
@@ -44,16 +43,18 @@ export function useKpiCombined() {
       filters.shopIds.slice().sort().join(","),
       filters.startDate.toDateString(),
       filters.endDate.toDateString(),
-      forceRefreshToken,
     ],
-    queryFn: () =>
-      fetchKpiCombinedData({
+    queryFn: () => {
+      const forceRefresh = forceRefreshRef.current;
+      forceRefreshRef.current = false;
+      return fetchKpiCombinedData({
         shopIds: filters.shopIds,
         shopNames: filters.shopNames,
         startDate: filters.startDate,
         endDate: filters.endDate,
-        forceRefresh: forceRefreshToken > 0,
-      }),
+        forceRefresh,
+      });
+    },
     enabled: hasSearched,
     staleTime: 2 * 60 * 1000,
   });
@@ -97,22 +98,19 @@ export function useKpiCombined() {
   }, [filteredEmployees]);
 
   function applyFilters(next: Partial<KpiFilters>) {
-    setKnownEmployeeNames(getKnownEmployees());
     setFilters((prev) => ({ ...prev, ...next }));
     setHasSearched(true);
   }
 
   function resetFilters() {
-    setKnownEmployeeNames(getKnownEmployees());
     setFilters(defaultFilters());
     setHasSearched(false);
   }
 
   function refresh() {
     if (!hasSearched) return;
-    setKnownEmployeeNames(getKnownEmployees());
-    setForceRefreshToken((t) => t + 1);
-    queryClient.invalidateQueries({ queryKey: ["kpi-combined"] });
+    forceRefreshRef.current = true;
+    dataQuery.refetch();
   }
 
   return {

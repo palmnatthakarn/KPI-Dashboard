@@ -28,9 +28,39 @@ export function KpiSummaryCards(props: {
   ready: boolean;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+    <div
+      className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
+      aria-busy={!props.ready}
+    >
       {CARDS.map((card, index) => {
         const base = categoricalPalette[index % categoricalPalette.length];
+
+        if (!props.ready) {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.key}
+              className="rounded-2xl border border-border bg-card p-4 text-left shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {card.label}
+                </p>
+                <span
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                  style={{ backgroundColor: `${base}1A`, color: base }}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+              </div>
+              <div
+                className="mt-3 h-8 w-24 max-w-full animate-pulse rounded-lg bg-secondary motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            </div>
+          );
+        }
+
         return (
           <StatTile
             key={card.key}
@@ -40,7 +70,6 @@ export function KpiSummaryCards(props: {
             // Categorical entries are single hexes; the tile needs the triple,
             // so the tint is derived from the same base color.
             accent={{ base, strong: base, soft: `${base}1A` }}
-            loading={!props.ready}
           />
         );
       })}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, CheckCircle2, AlertTriangle, Search } from "lucide-react";
 import { useKpiCombined } from "@/hooks/use-kpi-combined";
 import { KpiSummaryCards } from "@/components/kpi/kpi-summary-cards";
+import { KpiLoadingState } from "@/components/kpi/kpi-loading-state";
 import { KpiFilterBar } from "@/components/kpi/kpi-filter-bar";
 import { KpiTable } from "@/components/kpi/kpi-table";
 import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
@@ -23,6 +24,7 @@ export default function KpiPage() {
     hasSearched,
     shops,
     employeeNames: allEmployeeNames,
+    employees,
     filteredEmployees,
     summary,
     isLoading,
@@ -38,6 +40,7 @@ export default function KpiPage() {
   const username = useAuthStore((state) => state.username);
 
   const employeeItems = allEmployeeNames.map((name) => ({ id: name, label: getDisplayName(name) }));
+  const hasCachedKpiData = employees.length > 0;
 
   async function handleExport() {
     if (isExporting || !hasSearched || filteredEmployees.length === 0) return;
@@ -91,7 +94,7 @@ export default function KpiPage() {
         employeeNames={filters.employeeNames}
         startDate={filters.startDate}
         endDate={filters.endDate}
-        isSearching={isFetching}
+        isSearching={isLoading || isFetching}
         canExport={!isExporting && hasSearched && !isLoading && !isError && filteredEmployees.length > 0}
         onSearch={applyFilters}
         onReset={resetFilters}
@@ -107,15 +110,17 @@ export default function KpiPage() {
             ข้อมูลสถิติ ณ วันที่ {formatThaiDate(filters.startDate)} - {formatThaiDate(filters.endDate)}
           </p>
 
-          <KpiSummaryCards
-            totalDocuments={summary.totalDocuments}
-            totalUploaded={summary.totalUploaded}
-            remainingDocuments={summary.remainingDocuments}
-            waitingVerify={summary.waitingVerify}
-            requiredToRecordDocuments={summary.requiredToRecordDocuments}
-            totalJournalsCombined={summary.totalJournalsCombined}
-            ready={!isLoading}
-          />
+          {(!isError || hasCachedKpiData) && (
+            <KpiSummaryCards
+              totalDocuments={summary.totalDocuments}
+              totalUploaded={summary.totalUploaded}
+              remainingDocuments={summary.remainingDocuments}
+              waitingVerify={summary.waitingVerify}
+              requiredToRecordDocuments={summary.requiredToRecordDocuments}
+              totalJournalsCombined={summary.totalJournalsCombined}
+              ready={!isLoading}
+            />
+          )}
 
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
@@ -132,11 +137,8 @@ export default function KpiPage() {
 
           <div className="rounded-2xl border border-border bg-card shadow-sm">
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-24 text-sm text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            กำลังโหลดข้อมูล KPI...
-          </div>
-        ) : isError ? (
+          <KpiLoadingState />
+        ) : isError && !hasCachedKpiData ? (
           <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
             <AlertTriangle className="h-8 w-8 text-destructive" />
             <p className="text-sm font-medium">โหลดข้อมูลไม่สำเร็จ</p>
@@ -147,6 +149,21 @@ export default function KpiPage() {
           </div>
         ) : (
           <>
+            {isError && (
+              <div
+                className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-status-warning-soft px-4 py-2 text-[11px] text-status-warning-strong"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  อัปเดตข้อมูลล่าสุดไม่สำเร็จ — กำลังแสดงข้อมูลก่อนหน้า
+                </span>
+                <button type="button" onClick={refresh} className="font-semibold underline underline-offset-2">
+                  ลองใหม่
+                </button>
+              </div>
+            )}
             {incompleteShops.length > 0 && (
               <div className="flex items-center gap-2 border-b border-[#F1F5F9] bg-status-warning-soft px-4 py-2 text-[11px] text-status-warning-strong">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
