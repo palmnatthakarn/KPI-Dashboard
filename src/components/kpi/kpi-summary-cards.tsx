@@ -1,9 +1,9 @@
-import { Files, ImageUp, ListChecks, Eye, ClipboardList, KeyRound } from "lucide-react";
+import { Files, ImageUp, ListChecks, Eye, ClipboardList, KeyRound, ScanText } from "lucide-react";
 import { StatTile } from "@/components/ui/stat-tile";
 import { categoricalPalette } from "@/lib/design/tokens";
 
 /**
- * These six tiles are peers — none of them is a "status", they just need to be
+ * These seven tiles are peers — none of them is a "status", they just need to be
  * tellable apart, so they draw from the categorical palette rather than the
  * status colors. Reusing status green/amber/red here would make the numbers
  * look like judgements they aren't.
@@ -15,9 +15,12 @@ const CARDS = [
   { label: "รอตรวจ", key: "waitingVerify", icon: Eye },
   { label: "ต้องบันทึกทั้งหมด", key: "requiredToRecordDocuments", icon: ClipboardList },
   { label: "คีย์รวม", key: "totalJournalsCombined", icon: KeyRound },
+  // The categorical palette has six entries (also used for avatars), so the
+  // seventh tile carries its own distinct hue instead of repeating indigo.
+  { label: "AI วิเคราะห์แล้ว", key: "totalOcrAnalyzed", icon: ScanText, color: "#4D7C0F" },
 ] as const;
 
-/** Ported from KpiCombinedPage's summary card row (6 visible cards). */
+/** Ported from KpiCombinedPage's summary card row, plus the OCR AI tile. */
 export function KpiSummaryCards(props: {
   totalDocuments: number;
   totalUploaded: number;
@@ -25,15 +28,17 @@ export function KpiSummaryCards(props: {
   waitingVerify: number;
   requiredToRecordDocuments: number;
   totalJournalsCombined: number;
+  totalOcrAnalyzed: number;
   ready: boolean;
 }) {
   return (
     <div
-      className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
+      className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7"
       aria-busy={!props.ready}
     >
       {CARDS.map((card, index) => {
-        const base = categoricalPalette[index % categoricalPalette.length];
+        const base =
+          "color" in card ? card.color : categoricalPalette[index % categoricalPalette.length];
 
         if (!props.ready) {
           const Icon = card.icon;

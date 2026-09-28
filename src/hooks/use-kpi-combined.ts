@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchKpiCombinedData, getCurrentMonthRange, listKpiShops } from "@/lib/kpi/kpi-combined-service";
 import { useKnownEmployees } from "@/lib/employee/employee-mapping-service";
+import { countOcrAnalyzedGroups } from "@/types/document-image";
 import type { KpiCombinedEmployee, KpiCombinedShopItem } from "@/types/kpi-combined";
 
 /**
@@ -84,6 +85,10 @@ export function useKpiCombined() {
         acc.waitingVerify += e.waitingVerify;
         acc.requiredToRecordDocuments += e.requiredToRecordDocuments;
         acc.totalJournalsCombined += e.totalJournals + e.totalJournalsNoPhoto;
+        acc.totalOcrAnalyzed += e.shopStats.reduce(
+          (sum, shop) => sum + countOcrAnalyzedGroups(shop.uploadedImages),
+          0
+        );
         return acc;
       },
       {
@@ -93,6 +98,7 @@ export function useKpiCombined() {
         waitingVerify: 0,
         requiredToRecordDocuments: 0,
         totalJournalsCombined: 0,
+        totalOcrAnalyzed: 0,
       }
     );
   }, [filteredEmployees]);

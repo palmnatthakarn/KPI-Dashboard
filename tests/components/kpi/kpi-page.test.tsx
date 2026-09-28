@@ -47,6 +47,7 @@ const ZERO_SUMMARY = {
   waitingVerify: 0,
   requiredToRecordDocuments: 0,
   totalJournalsCombined: 0,
+  totalOcrAnalyzed: 0,
 };
 
 function mockHook(overrides: Partial<ReturnType<typeof useKpiCombined>> = {}) {

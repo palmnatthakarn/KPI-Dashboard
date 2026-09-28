@@ -11,6 +11,7 @@ const labels = [
   "รอตรวจ",
   "ต้องบันทึกทั้งหมด",
   "คีย์รวม",
+  "AI วิเคราะห์แล้ว",
 ];
 
 const values = {
@@ -20,10 +21,11 @@ const values = {
   waitingVerify: 444_444,
   requiredToRecordDocuments: 555_555,
   totalJournalsCombined: 666_666,
+  totalOcrAnalyzed: 777_777,
 };
 
 describe("KpiSummaryCards", () => {
-  it("keeps all six KPI labels visible without showing values or fake progress while loading", () => {
+  it("keeps all KPI labels visible without showing values or fake progress while loading", () => {
     const html = renderToStaticMarkup(<KpiSummaryCards {...values} ready={false} />);
 
     expect(html).toContain('aria-busy="true"');
@@ -35,7 +37,7 @@ describe("KpiSummaryCards", () => {
     expect(html).not.toContain("w-2/3");
   });
 
-  it("renders all six values when the summary is ready", () => {
+  it("renders all values when the summary is ready", () => {
     const html = renderToStaticMarkup(<KpiSummaryCards {...values} ready />);
 
     expect(html).toContain('aria-busy="false"');

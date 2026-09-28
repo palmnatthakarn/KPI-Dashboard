@@ -118,6 +118,7 @@ export default function KpiPage() {
               waitingVerify={summary.waitingVerify}
               requiredToRecordDocuments={summary.requiredToRecordDocuments}
               totalJournalsCombined={summary.totalJournalsCombined}
+              totalOcrAnalyzed={summary.totalOcrAnalyzed}
               ready={!isLoading}
             />
           )}
