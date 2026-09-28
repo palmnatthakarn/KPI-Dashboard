@@ -10,6 +10,7 @@ import {
   pdf,
 } from "@react-pdf/renderer";
 import { getDisplayName } from "@/lib/employee/employee-mapping-service";
+import { countOcrAnalyzedGroups } from "@/types/document-image";
 import type { KpiCombinedEmployee } from "@/types/kpi-combined";
 
 let fontsRegistered = false;
@@ -45,6 +46,7 @@ const headers = [
   "คีย์รวม",
   "ตรวจสอบ",
   "แก้ไข",
+  "AI วิเคราะห์แล้ว",
 ];
 
 function formatPdfNumber(value: number): string {
@@ -71,8 +73,8 @@ const styles = StyleSheet.create({
   headerRow: { backgroundColor: "#e2e8f0", minHeight: 34 },
   totalRow: { backgroundColor: "#eff6ff" },
   contextRow: { color: "#ea580c" },
-  firstCell: { width: "20%", padding: 2.5, borderRightWidth: 0.35, borderColor: "#94a3b8", justifyContent: "center" },
-  cell: { width: "5%", padding: 2, borderRightWidth: 0.35, borderColor: "#94a3b8", justifyContent: "center", textAlign: "right" },
+  firstCell: { width: "18%", padding: 2.5, borderRightWidth: 0.35, borderColor: "#94a3b8", justifyContent: "center" },
+  cell: { width: "4.8%", padding: 2, borderRightWidth: 0.35, borderColor: "#94a3b8", justifyContent: "center", textAlign: "right" },
   headerText: { fontWeight: 700, textAlign: "center", fontSize: 5.8 },
   footer: { position: "absolute", left: 22, right: 22, bottom: 10, flexDirection: "row", justifyContent: "space-between", fontSize: 6, color: "#64748b" },
 });
@@ -96,6 +98,7 @@ function shopCells(shop: KpiCombinedEmployee["shopStats"][number]): string[] {
     String(shop.journalCount + shop.journalCountNoPhoto),
     String(shop.journalChecked),
     String(shop.journalUpdated),
+    String(countOcrAnalyzedGroups(shop.uploadedImages)),
   ];
 }
 
