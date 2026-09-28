@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api/client";
 import { selectShop } from "@/lib/api/multi-shop-service";
-import { parseDocumentImage, type DocumentImage } from "@/types/document-image";
+import { hasOcrAnalysis, parseDocumentImage, type DocumentImage } from "@/types/document-image";
 
 /**
  * Ported from DocumentImageService.fetchDocNoToTaskGuidMap /
@@ -84,6 +84,9 @@ export interface DocNoToTaskGuidMapResult {
   totalItemsSeen: number;
   apiReportedTotal: number | null;
 }
+
+/** `/documentimagegroup` carries the OCR AI result on the group item itself. */
+const OCR_ANALYZE_KEYS = ["ocranalyzeai", "ocrAnalyzeAi", "ocrAnalyzeAI"];
 
 function parseIntSafe(value: unknown): number {
   if (value == null) return 0;
@@ -211,6 +214,7 @@ export async function fetchDocNoToTaskGuidMap(params: {
           ).trim();
           const groupTitle = String(firstValue(item, ["title", "name"]) ?? "").trim();
           const groupOrder = parseIntSafe(firstValue(item, ["xorder", "xOrder", "x_order"]));
+          const groupOcrAnalyzed = hasOcrAnalysis(firstValue(item, OCR_ANALYZE_KEYS));
           const groupDocNo =
             Array.isArray(refsRaw) && refsRaw.length > 0
               ? String(
@@ -231,6 +235,7 @@ export async function fetchDocNoToTaskGuidMap(params: {
               groupOrder,
               groupDocNo: groupDocNo || null,
             };
+            image.ocrAnalyzed = image.ocrAnalyzed || groupOcrAnalyzed;
             if (image.imageId || image.imageUrl) {
               uploadedImages.push(image);
               groupImages.push(image);
@@ -291,6 +296,7 @@ export async function fetchDocumentImageGroupImages(documentRef: string): Promis
     const groupGuid = String(firstValue(item, ["guidfixed", "guidFixed", "guid_fixed"]) ?? "").trim();
     const groupTitle = String(firstValue(item, ["title", "name"]) ?? "").trim();
     const groupOrder = parseIntSafe(firstValue(item, ["xorder", "xOrder", "x_order"]));
+    const groupOcrAnalyzed = hasOcrAnalysis(firstValue(item, OCR_ANALYZE_KEYS));
     const refsRaw = firstValue(item, ["references", "reference", "documentReferences"]);
     const groupDocNo =
       Array.isArray(refsRaw) && refsRaw.length > 0
@@ -307,13 +313,17 @@ export async function fetchDocumentImageGroupImages(documentRef: string): Promis
     if (!Array.isArray(imgRefsRaw)) return [];
 
     return imgRefsRaw
-      .map((imageReference) => ({
-        ...parseDocumentImage(imageReference as Record<string, unknown>),
-        groupId: groupGuid || ref,
+      .map((imageReference) => {
+        const image = parseDocumentImage(imageReference as Record<string, unknown>);
+        return {
+          ...image,
+          ocrAnalyzed: image.ocrAnalyzed || groupOcrAnalyzed,
+          groupId: groupGuid || ref,
         groupTitle: groupTitle || null,
         groupOrder,
-        groupDocNo: groupDocNo || null,
-      }))
+          groupDocNo: groupDocNo || null,
+        };
+      })
       .filter((image) => Boolean(image.imageId || image.imageUrl));
   } catch {
     return [];

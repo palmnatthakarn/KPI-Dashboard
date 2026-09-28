@@ -8,6 +8,8 @@ export interface DocumentImage {
   uploadedAt: string | null;
   uploadedBy: string | null;
   imageUrl: string | null;
+  /** True when its /documentimagegroup item (or the image itself) has a non-empty `ocranalyzeai`. */
+  ocrAnalyzed?: boolean;
   /** Parent /documentimagegroup identity. Images sharing this value are one set. */
   groupId?: string | null;
   groupTitle?: string | null;
@@ -31,6 +33,29 @@ export function countDocumentImageGroups(images: DocumentImage[]): number {
     groups.add(getDocumentImageGroupKey(image, index));
   });
   return groups.size;
+}
+
+/**
+ * Number of image sets whose `ocranalyzeai` has a value: each analyzed
+ * /documentimagegroup item counts 1, an empty/missing one counts 0.
+ */
+export function countOcrAnalyzedGroups(images: DocumentImage[]): number {
+  const groups = new Set<string>();
+  images.forEach((image, index) => {
+    if (image.ocrAnalyzed) groups.add(getDocumentImageGroupKey(image, index));
+  });
+  return groups.size;
+}
+
+export function hasOcrAnalysis(value: unknown): boolean {
+  if (value == null || value === false) return false;
+  if (typeof value === "string") {
+    const text = value.trim();
+    return text.length > 0 && !["null", "{}", "[]", "false"].includes(text.toLowerCase());
+  }
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
 }
 
 function resolveDocumentImageUrl(value: unknown): string | null {
@@ -81,5 +106,6 @@ export function parseDocumentImage(json: any): DocumentImage {
     uploadedAt: json?.uploadedat?.toString() ?? json?.uploadedAt?.toString() ?? json?.uploaded_at?.toString() ?? json?.metafileat?.toString() ?? null,
     uploadedBy: json?.uploadedby?.toString() ?? json?.uploadedBy?.toString() ?? json?.uploaded_by?.toString() ?? null,
     imageUrl: resolveDocumentImageUrl(rawImageUrl),
+    ocrAnalyzed: hasOcrAnalysis(json?.ocranalyzeai ?? json?.ocrAnalyzeAi ?? json?.ocrAnalyzeAI),
   };
 }

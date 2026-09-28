@@ -7,6 +7,7 @@ import { Pagination } from "@/components/common/pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiColors, KpiDimensions } from "@/lib/kpi/kpi-constants";
 import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
+import { countOcrAnalyzedGroups } from "@/types/document-image";
 import type { KpiCombinedEmployee, KpiCombinedShopStat, KpiCombinedTaskItem } from "@/types/kpi-combined";
 
 const NUMERIC_COL_MIN_WIDTH = 72;
@@ -62,6 +63,7 @@ function numericColumns(stats: {
   journalCountNoPhoto: number;
   journalChecked: number;
   journalUpdated: number;
+  ocrAnalyzed: number;
 }) {
   return (
     <>
@@ -79,6 +81,7 @@ function numericColumns(stats: {
       {numCell(stats.journalCount + stats.journalCountNoPhoto)}
       {numCell(stats.journalChecked)}
       {numCell(stats.journalUpdated)}
+      {numCell(stats.ocrAnalyzed)}
     </>
   );
 }
@@ -99,6 +102,7 @@ const GROUP_HEADERS = [
   { label: "สถานะการตรวจสอบ", span: 5, tinted: true },
   { label: "สถานะการบันทึกบัญชี", span: 4, tinted: true },
   { label: "บันทึกบัญชี (GL)", span: 5, tinted: true },
+  { label: "OCR", span: 1, tinted: true },
   { label: "", span: 1, tinted: false },
 ];
 
@@ -119,6 +123,7 @@ const COLUMN_LABELS = [
   "คีย์รวม",
   "ตรวจสอบ",
   "แก้ไข",
+  "AI วิเคราะห์แล้ว",
   "",
 ];
 
@@ -127,6 +132,7 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
   คีย์: "นับจำนวนรายการบันทึกบัญชี (GL) ไม่ใช่จำนวนเอกสาร",
   "คีย์(ไม่มีรูป)": "รายการที่คีย์โดยไม่มีรูปหรือเอกสารอ้างอิง",
   คีย์รวม: "= คีย์ + คีย์(ไม่มีรูป)",
+  "AI วิเคราะห์แล้ว": "จำนวนชุดเอกสาร (/documentimagegroup) ที่มีผล ocranalyzeai แล้ว",
 };
 
 /** Ported from KpiCombinedPage's DataTable2 + 3-level expand/collapse drill-down. */
@@ -276,6 +282,7 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
                   journalCountNoPhoto: emp.totalJournalsNoPhoto,
                   journalChecked: emp.totalChecked,
                   journalUpdated: emp.totalUpdated,
+                  ocrAnalyzed: emp.shopStats.reduce((sum, sh) => sum + countOcrAnalyzedGroups(sh.uploadedImages), 0),
                 })}
                 <div className="flex items-center justify-center text-muted-foreground group-hover:text-info-strong">
                   {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -508,6 +515,7 @@ function ShopRow({
           journalCountNoPhoto: shop.journalCountNoPhoto,
           journalChecked: shop.journalChecked,
           journalUpdated: shop.journalUpdated,
+          ocrAnalyzed: countOcrAnalyzedGroups(shop.uploadedImages),
         })}
         <div className="flex items-center justify-center text-muted-foreground group-hover/shop:text-foreground">
           {expandable ? isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" /> : null}
@@ -611,6 +619,7 @@ function TaskRow({
           journalCountNoPhoto: journalStats.journalCountNoPhoto,
           journalChecked: journalStats.journalChecked,
           journalUpdated: journalStats.journalUpdated,
+          ocrAnalyzed: countOcrAnalyzedGroups(task.uploadedImages),
         })}
         <div className="flex items-center justify-center text-muted-foreground group-hover/task:text-info-strong">
           {expandable ? isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" /> : null}

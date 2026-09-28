@@ -71,7 +71,7 @@ export const KpiDimensions = {
 
   nameColWidth: 290,
   numColWidth: 90,
-  numColCount: 15,
+  numColCount: 16,
   expandColWidth: 50,
 } as const;
 
