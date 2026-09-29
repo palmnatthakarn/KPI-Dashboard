@@ -47,6 +47,18 @@ export function countOcrAnalyzedGroups(images: DocumentImage[]): number {
   return groups.size;
 }
 
+/**
+ * OCR-analyzed sets credited to one employee. `ocranalyzeai` does not record
+ * who ran the OCR, so the set is credited to whoever uploaded its images —
+ * not to people who only keyed journals referencing it.
+ */
+export function countOcrAnalyzedGroupsUploadedBy(images: DocumentImage[], uploader: string): number {
+  const target = uploader.trim().toLowerCase();
+  return countOcrAnalyzedGroups(
+    images.filter((image) => (image.uploadedBy ?? "").trim().toLowerCase() === target)
+  );
+}
+
 export function hasOcrAnalysis(value: unknown): boolean {
   if (value == null || value === false) return false;
   if (typeof value === "string") {

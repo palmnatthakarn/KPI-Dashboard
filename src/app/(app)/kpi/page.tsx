@@ -1,17 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, CheckCircle2, AlertTriangle, Search } from "lucide-react";
 import { useKpiCombined } from "@/hooks/use-kpi-combined";
 import { KpiSummaryCards } from "@/components/kpi/kpi-summary-cards";
 import { KpiLoadingState } from "@/components/kpi/kpi-loading-state";
 import { KpiFilterBar } from "@/components/kpi/kpi-filter-bar";
 import { KpiTable } from "@/components/kpi/kpi-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  EMPTY_DOC_SEARCH,
+  filterEmployeesByDocSearch,
+  isDocSearchActive,
+  type DocSearch,
+} from "@/lib/kpi/kpi-doc-search";
 import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
 import { useAuthStore } from "@/store/auth-store";
 import { formatThaiDate } from "@/lib/utils";
 
 const FONT_SCALES = [1, 1.2, 1.4];
+
+function docSearchEmptyTitle(search: DocSearch): string {
+  const linkLabel = search.link === "linked" ? "ที่ผูกงาน" : search.link === "unlinked" ? "ที่ไม่ผูกงาน" : "";
+  const docNo = search.docNo.trim();
+  return docNo ? `ไม่พบเลขที่เอกสาร "${docNo}"${linkLabel}` : `ไม่พบเอกสาร${linkLabel}`;
+}
 
 /** Ported from KpiCombinedPage (kpi_combined_page.dart) — the single reachable "KPI" nav item. */
 export default function KpiPage() {
@@ -19,7 +32,6 @@ export default function KpiPage() {
   const {
     filters,
     applyFilters,
-    resetFilters,
     refresh,
     hasSearched,
     shops,
@@ -37,19 +49,27 @@ export default function KpiPage() {
   const [fontScale, setFontScale] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [docSearch, setDocSearch] = useState(EMPTY_DOC_SEARCH);
+  // Doc-number search only narrows the table view; summary cards and the PDF
+  // keep reporting the whole selected range.
+  const tableEmployees = useMemo(
+    () => filterEmployeesByDocSearch(filteredEmployees, docSearch),
+    [filteredEmployees, docSearch]
+  );
   const username = useAuthStore((state) => state.username);
 
   const employeeItems = allEmployeeNames.map((name) => ({ id: name, label: getDisplayName(name) }));
   const hasCachedKpiData = employees.length > 0;
 
   async function handleExport() {
-    if (isExporting || !hasSearched || filteredEmployees.length === 0) return;
+    if (isExporting || !hasSearched || tableEmployees.length === 0) return;
     setIsExporting(true);
     setToast("กำลังสร้างไฟล์ PDF...");
     try {
       const { exportKpiPdf } = await import("@/lib/kpi/kpi-pdf-export");
       await exportKpiPdf({
         employees: filteredEmployees,
+        docSearch,
         startDate: filters.startDate,
         endDate: filters.endDate,
         userName: username ?? "ผู้ใช้งาน",
@@ -95,10 +115,9 @@ export default function KpiPage() {
         startDate={filters.startDate}
         endDate={filters.endDate}
         isSearching={isLoading || isFetching}
-        canExport={!isExporting && hasSearched && !isLoading && !isError && filteredEmployees.length > 0}
         onSearch={applyFilters}
-        onReset={resetFilters}
-        onExport={handleExport}
+        docSearch={docSearch}
+        onDocSearchChange={setDocSearch}
       />
 
       {hasSearched ? (
@@ -171,7 +190,23 @@ export default function KpiPage() {
                 โหลดข้อมูลไม่ครบสำหรับร้าน: {incompleteShops.join(", ")} — ลองกดค้นหาอีกครั้ง
               </div>
             )}
-            <KpiTable employees={filteredEmployees} fontScale={fontScale} />
+            {isDocSearchActive(docSearch) && tableEmployees.length === 0 ? (
+              <EmptyState
+                icon={Search}
+                size="page"
+                title={docSearchEmptyTitle(docSearch)}
+                description="ในช่วงวันที่ ร้าน และพนักงานที่เลือก"
+              />
+            ) : (
+              <KpiTable
+                employees={tableEmployees}
+                fontScale={fontScale}
+                docSearch={docSearch}
+                onExport={handleExport}
+                canExport={!isExporting && !isError && tableEmployees.length > 0}
+                isExporting={isExporting}
+              />
+            )}
           </>
         )}
           </div>

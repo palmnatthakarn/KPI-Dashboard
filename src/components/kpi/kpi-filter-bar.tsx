@@ -16,8 +16,9 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw, FileDown, Search as SearchIcon, Loader2 } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Search as SearchIcon, Loader2, SlidersHorizontal, X } from "lucide-react";
 import { SearchableMultiDropdown } from "@/components/common/searchable-multi-dropdown";
+import { EMPTY_DOC_SEARCH, isDocSearchActive, type DocLinkFilter, type DocSearch } from "@/lib/kpi/kpi-doc-search";
 import { cn } from "@/lib/utils";
 import type { KpiCombinedShopItem } from "@/types/kpi-combined";
 
@@ -78,10 +79,9 @@ export function KpiFilterBar({
   startDate,
   endDate,
   isSearching,
-  canExport,
   onSearch,
-  onReset,
-  onExport,
+  docSearch,
+  onDocSearchChange,
 }: {
   employeeItems: { id: string; label: string }[];
   shops: KpiCombinedShopItem[];
@@ -90,11 +90,19 @@ export function KpiFilterBar({
   startDate: Date;
   endDate: Date;
   isSearching: boolean;
-  canExport: boolean;
   onSearch: (filters: { shopIds: string[]; shopNames: string[]; startDate: Date; endDate: Date; employeeNames: string[] }) => void;
-  onReset: () => void;
-  onExport: () => void;
+  /** Applied document filter; edits stay a draft until "ค้นหา" is pressed. */
+  docSearch: DocSearch;
+  onDocSearchChange: (search: DocSearch) => void;
 }) {
+  const [advancedOpen, setAdvancedOpen] = useState(isDocSearchActive(docSearch));
+  const [draftDocSearch, setDraftDocSearch] = useState<DocSearch>(docSearch);
+  const searchActive = isDocSearchActive(docSearch);
+
+  useEffect(() => {
+    setDraftDocSearch(docSearch);
+  }, [docSearch]);
+
   const [draftShopIds, setDraftShopIds] = useState<string[]>(shopIds);
   const [draftEmployeeNames, setDraftEmployeeNames] = useState<string[]>(employeeNames);
   const [draftStart, setDraftStart] = useState<Date>(startDate);
@@ -118,6 +126,7 @@ export function KpiFilterBar({
     if (!draftStartValid || !draftEndValid) return;
     const shopNames = shops.filter((s) => draftShopIds.includes(s.shopId)).map((s) => s.shopName);
     onSearch({ shopIds: draftShopIds, shopNames, startDate: draftStart, endDate: draftEnd, employeeNames: draftEmployeeNames });
+    onDocSearchChange(draftDocSearch);
   }
 
   return (
@@ -168,24 +177,26 @@ export function KpiFilterBar({
         <div className="flex items-center gap-2 md:col-span-2 xl:col-span-1 xl:pt-[21px]">
           <button
             type="button"
-            title="รีเซ็ตตัวกรอง"
+            title="ค้นหาเพิ่มเติม"
             onClick={() => {
-              onReset();
+              // Closing clears the filter so no hidden search keeps narrowing the table.
+              if (advancedOpen) {
+                setDraftDocSearch(EMPTY_DOC_SEARCH);
+                onDocSearchChange(EMPTY_DOC_SEARCH);
+              }
+              setAdvancedOpen(!advancedOpen);
             }}
-            aria-label="รีเซ็ตตัวกรอง"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            aria-label="ค้นหาเพิ่มเติม"
+            aria-expanded={advancedOpen}
+            aria-controls="kpi-advanced-search"
+            className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors hover:bg-secondary hover:text-foreground ${
+              advancedOpen ? "border-primary/40 bg-accent text-foreground" : "border-border bg-card text-muted-foreground"
+            }`}
           >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            title="ส่งออก PDF"
-            onClick={onExport}
-            disabled={!canExport}
-            aria-label="ส่งออก PDF"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <FileDown className="h-4 w-4" />
+            <SlidersHorizontal className="h-4 w-4" />
+            {searchActive && (
+              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+            )}
           </button>
           <button
             type="button"
@@ -198,9 +209,85 @@ export function KpiFilterBar({
           </button>
         </div>
       </div>
+
+      {advancedOpen && (
+        <div id="kpi-advanced-search" className="mt-3 border-t border-border pt-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_minmax(240px,1fr)_150px_150px_auto]"
+          >
+            <div className="min-w-0">
+              <label htmlFor="kpi-docno-search" className="mb-1.5 block text-[11px] font-medium text-muted-foreground">
+                เลขที่เอกสาร
+              </label>
+              <div className="flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
+                <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <input
+                  id="kpi-docno-search"
+                  type="search"
+                  autoFocus
+                  value={draftDocSearch.docNo}
+                  onChange={(event) => setDraftDocSearch({ ...draftDocSearch, docNo: event.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !isSearching) handleSearch();
+                  }}
+                  placeholder="เช่น TR-6909-0377"
+                  className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+                />
+                {draftDocSearch.docNo && (
+                  <button
+                    type="button"
+                    onClick={() => setDraftDocSearch({ ...draftDocSearch, docNo: "" })}
+                    aria-label="ล้างเลขที่เอกสาร"
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <span id="kpi-doc-link-label" className="mb-1.5 block text-[11px] font-medium text-muted-foreground">
+                การผูกงาน
+              </span>
+              <div
+                role="radiogroup"
+                aria-labelledby="kpi-doc-link-label"
+                className="grid h-10 grid-cols-3 gap-1 rounded-xl border border-border bg-secondary p-1"
+              >
+                {DOC_LINK_OPTIONS.map((option) => {
+                  const selected = draftDocSearch.link === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setDraftDocSearch({ ...draftDocSearch, link: option.value })}
+                      className={`min-w-0 truncate rounded-lg px-2 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        selected
+                          ? "bg-card font-semibold text-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-card/60 hover:text-foreground"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">กดปุ่ม &quot;ค้นหา&quot; หรือ Enter เพื่อใช้ตัวกรอง</p>
+        </div>
+      )}
     </div>
   );
 }
+
+const DOC_LINK_OPTIONS: { value: DocLinkFilter; label: string }[] = [
+  { value: "all", label: "ทั้งหมด" },
+  { value: "linked", label: "ผูกงาน" },
+  { value: "unlinked", label: "ไม่ผูกงาน" },
+];
 
 function DatePickerField({
   value,

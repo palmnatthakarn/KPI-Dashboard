@@ -1,13 +1,22 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { BriefcaseBusiness, ChevronDown, ChevronRight, Inbox, ImageUp, Store, User, Users } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { BriefcaseBusiness, ChevronDown, ChevronRight, Download, Inbox, ImageUp, Loader2, Store, User, Users } from "lucide-react";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { Pagination } from "@/components/common/pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiColors, KpiDimensions } from "@/lib/kpi/kpi-constants";
 import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
-import { countOcrAnalyzedGroups } from "@/types/document-image";
+import { countOcrAnalyzedGroups, countOcrAnalyzedGroupsUploadedBy } from "@/types/document-image";
+import {
+  EMPTY_DOC_SEARCH,
+  isDocSearchActive,
+  journalMatchesDocNo,
+  normalizeDocSearch,
+  taskMatchesDocSearch,
+  unlinkedJournalMatchesDocSearch,
+  type DocSearch,
+} from "@/lib/kpi/kpi-doc-search";
 import type { KpiCombinedEmployee, KpiCombinedShopStat, KpiCombinedTaskItem } from "@/types/kpi-combined";
 
 const NUMERIC_COL_MIN_WIDTH = 72;
@@ -136,13 +145,65 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
 };
 
 /** Ported from KpiCombinedPage's DataTable2 + 3-level expand/collapse drill-down. */
-export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmployee[]; fontScale: number }) {
+export function KpiTable({
+  employees,
+  fontScale,
+  docSearch = EMPTY_DOC_SEARCH,
+  onExport,
+  canExport = false,
+  isExporting = false,
+}: {
+  employees: KpiCombinedEmployee[];
+  fontScale: number;
+  /** Document search; `employees` is expected to be pre-filtered to matching shops. */
+  docSearch?: DocSearch;
+  /** Shows the "ดาวน์โหลด PDF" button in the table header when provided. */
+  onExport?: () => void;
+  canExport?: boolean;
+  isExporting?: boolean;
+}) {
   useEmployeeMappings();
   const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
   const [expandedShops, setExpandedShops] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  // null while no document search is active.
+  const search = isDocSearchActive(docSearch) ? normalizeDocSearch(docSearch) : null;
+  const searchKey = search ? `${search.link}|${search.docNo}` : "";
+  const wasSearching = useRef(false);
+
+  // While searching, open the matching employees and shops. Tasks are opened
+  // only for a document-number search: a link filter alone can match
+  // thousands of journal cards. Rows stay toggleable, and everything
+  // collapses again when the search is cleared.
+  useEffect(() => {
+    if (search) {
+      const shopKeys: string[] = [];
+      const taskKeys: string[] = [];
+      for (const employee of employees) {
+        for (const shop of employee.shopStats) {
+          const shopKey = `${employee.name} ${shop.shopName}`;
+          shopKeys.push(shopKey);
+          if (!search.docNo) continue;
+          shop.tasks.forEach((task, i) => {
+            if (taskMatchesDocSearch(task, search)) taskKeys.push(`${shopKey}#${i}`);
+          });
+        }
+      }
+      setExpandedEmployees(new Set(employees.map((employee) => employee.name)));
+      setExpandedShops(new Set(shopKeys));
+      setExpandedTasks(new Set(taskKeys));
+      setCurrentPage(1);
+    } else if (wasSearching.current) {
+      setExpandedEmployees(new Set());
+      setExpandedShops(new Set());
+      setExpandedTasks(new Set());
+    }
+    wasSearching.current = !!search;
+    // `search` is derived from searchKey, so it is intentionally not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchKey, employees]);
 
   function toggleEmployee(name: string) {
     setExpandedEmployees((prev) => {
@@ -199,6 +260,18 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
         <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-info-strong">
           ทั้งหมด {employees.length.toLocaleString("th-TH")} คน
         </span>
+        {onExport && (
+          <button
+            type="button"
+            onClick={onExport}
+            disabled={!canExport}
+            title="ดาวน์โหลด PDF"
+            aria-label="ดาวน์โหลด PDF"
+            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          </button>
+        )}
       </div>
 
       <div className="divide-y divide-border md:hidden">
@@ -210,6 +283,7 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
             expandedShops={expandedShops}
             onToggleEmployee={toggleEmployee}
             onToggleShop={toggleShop}
+            search={search}
           />
         ))}
       </div>
@@ -282,7 +356,10 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
                   journalCountNoPhoto: emp.totalJournalsNoPhoto,
                   journalChecked: emp.totalChecked,
                   journalUpdated: emp.totalUpdated,
-                  ocrAnalyzed: emp.shopStats.reduce((sum, sh) => sum + countOcrAnalyzedGroups(sh.uploadedImages), 0),
+                  ocrAnalyzed: emp.shopStats.reduce(
+                    (sum, sh) => sum + countOcrAnalyzedGroupsUploadedBy(sh.uploadedImages, emp.name),
+                    0
+                  ),
                 })}
                 <div className="flex items-center justify-center text-muted-foreground group-hover:text-info-strong">
                   {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -300,6 +377,7 @@ export function KpiTable({ employees, fontScale }: { employees: KpiCombinedEmplo
                     onToggleShop={toggleShop}
                     onToggleTask={toggleTask}
                     fs={fs}
+                    search={search}
                   />
                 ))}
             </div>
@@ -327,12 +405,14 @@ function MobileEmployeeCard({
   expandedShops,
   onToggleEmployee,
   onToggleShop,
+  search,
 }: {
   employee: KpiCombinedEmployee;
   expanded: boolean;
   expandedShops: Set<string>;
   onToggleEmployee: (name: string) => void;
   onToggleShop: (key: string) => void;
+  search: DocSearch | null;
 }) {
   const displayName = getDisplayName(employee.name);
   const taskCount = employee.shopStats.reduce((total, shop) => total + shop.tasks.length, 0);
@@ -375,6 +455,7 @@ function MobileEmployeeCard({
                 shop={shop}
                 expanded={expandedShops.has(shopKey)}
                 onToggle={() => onToggleShop(shopKey)}
+                search={search}
               />
             );
           })}
@@ -393,7 +474,21 @@ function MobileMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function MobileShopCard({ shop, expanded, onToggle }: { shop: KpiCombinedShopStat; expanded: boolean; onToggle: () => void }) {
+function MobileShopCard({
+  shop,
+  expanded,
+  onToggle,
+  search,
+}: {
+  shop: KpiCombinedShopStat;
+  expanded: boolean;
+  onToggle: () => void;
+  search: DocSearch | null;
+}) {
+  const visibleTasks = search ? shop.tasks.filter((task) => taskMatchesDocSearch(task, search)) : shop.tasks;
+  const unlinkedCount = search
+    ? shop.orphanJournalEntries.filter((journal) => unlinkedJournalMatchesDocSearch(journal, search)).length
+    : shop.orphanJournalEntries.length;
   const expandable = shop.tasks.length > 0 || shop.orphanJournalEntries.length > 0;
 
   return (
@@ -420,7 +515,7 @@ function MobileShopCard({ shop, expanded, onToggle }: { shop: KpiCombinedShopSta
       {expanded && (
         <div className="border-t border-border bg-secondary/60 p-2">
           <div className="space-y-1.5">
-            {shop.tasks.map((task, index) => {
+            {visibleTasks.map((task, index) => {
               const status = STATUS_LABELS[task.status] ?? { label: `สถานะ ${task.status}`, color: KpiColors.mutedText };
               const journalStats = journalStatsForTask(task);
               return (
@@ -441,9 +536,9 @@ function MobileShopCard({ shop, expanded, onToggle }: { shop: KpiCombinedShopSta
               );
             })}
           </div>
-          {shop.orphanJournalEntries.length > 0 && (
+          {unlinkedCount > 0 && (
             <p className="mt-2 rounded-lg border border-dashed border-status-warning/40 bg-status-warning-soft px-2.5 py-2 text-[9px] font-medium text-status-warning-strong">
-              รายการไม่ผูกงาน {shop.orphanJournalEntries.length.toLocaleString("th-TH")} รายการ
+              รายการไม่ผูกงาน {unlinkedCount.toLocaleString("th-TH")} รายการ
             </p>
           )}
         </div>
@@ -460,6 +555,7 @@ function ShopRow({
   onToggleShop,
   onToggleTask,
   fs,
+  search,
 }: {
   employeeName: string;
   shop: KpiCombinedShopStat;
@@ -468,9 +564,17 @@ function ShopRow({
   onToggleShop: (key: string) => void;
   onToggleTask: (key: string) => void;
   fs: (n: number) => string;
+  search: DocSearch | null;
 }) {
   const shopKey = `${employeeName} ${shop.shopName}`;
   const isExpanded = expandedShops.has(shopKey);
+  // Keep each task's original index so its expand key is the same with or without a search.
+  const visibleTasks = shop.tasks
+    .map((task, index) => ({ task, index }))
+    .filter(({ task }) => !search || taskMatchesDocSearch(task, search));
+  const orphanEntries = search
+    ? shop.orphanJournalEntries.filter((journal) => unlinkedJournalMatchesDocSearch(journal, search))
+    : shop.orphanJournalEntries;
   const expandable = shop.tasks.length > 0 || shop.orphanJournalEntries.length > 0;
 
   return (
@@ -515,7 +619,7 @@ function ShopRow({
           journalCountNoPhoto: shop.journalCountNoPhoto,
           journalChecked: shop.journalChecked,
           journalUpdated: shop.journalUpdated,
-          ocrAnalyzed: countOcrAnalyzedGroups(shop.uploadedImages),
+          ocrAnalyzed: countOcrAnalyzedGroupsUploadedBy(shop.uploadedImages, employeeName),
         })}
         <div className="flex items-center justify-center text-muted-foreground group-hover/shop:text-foreground">
           {expandable ? isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" /> : null}
@@ -524,7 +628,7 @@ function ShopRow({
 
       {isExpanded && (
         <div className="border-l border-l-slate-200 bg-card">
-          {shop.tasks.map((task, i) => (
+          {visibleTasks.map(({ task, index: i }) => (
             <TaskRow
               key={`${shopKey}#${i}`}
               taskKey={`${shopKey}#${i}`}
@@ -532,12 +636,15 @@ function ShopRow({
               isExpanded={expandedTasks.has(`${shopKey}#${i}`)}
               onToggle={onToggleTask}
               fs={fs}
+              search={search}
             />
           ))}
-          {shop.orphanJournalEntries.length > 0 && (
-            <JournalDetailPanel title={`รายการที่ไม่ผูกกับงาน (${shop.orphanJournalEntries.length})`}>
-              {shop.orphanJournalEntries.map((j, i) => (
-                <OrphanJournalCard key={i} journal={j} fs={fs} />
+          {orphanEntries.length > 0 && (
+            <JournalDetailPanel
+              title={`รายการที่ไม่ผูกกับงาน (${panelCount(orphanEntries.length, shop.orphanJournalEntries.length, search)})`}
+            >
+              {orphanEntries.map((j, i) => (
+                <OrphanJournalCard key={i} journal={j} fs={fs} highlighted={!!search?.docNo} />
               ))}
             </JournalDetailPanel>
           )}
@@ -553,16 +660,21 @@ function TaskRow({
   isExpanded,
   onToggle,
   fs,
+  search,
 }: {
   taskKey: string;
   task: KpiCombinedTaskItem;
   isExpanded: boolean;
   onToggle: (key: string) => void;
   fs: (n: number) => string;
+  search: DocSearch | null;
 }) {
   const status = STATUS_LABELS[task.status] ?? { label: `สถานะ ${task.status}`, color: KpiColors.mutedText };
   const expandable = task.journalEntries.length > 0;
   const journalStats = journalStatsForTask(task);
+  const visibleEntries = search?.docNo
+    ? task.journalEntries.filter((journal) => journalMatchesDocNo(journal, search))
+    : task.journalEntries;
 
   return (
     <div>
@@ -627,14 +739,23 @@ function TaskRow({
       </div>
 
       {isExpanded && (
-        <JournalDetailPanel title={`รายการบันทึกบัญชี (${task.journalEntries.length})`}>
-          {task.journalEntries.map((j, i) => (
-            <JournalEntryCard key={i} journal={j} fs={fs} />
+        <JournalDetailPanel
+          title={`รายการบันทึกบัญชี (${panelCount(visibleEntries.length, task.journalEntries.length, search)})`}
+        >
+          {visibleEntries.map((j, i) => (
+            <JournalEntryCard key={i} journal={j} fs={fs} highlighted={!!search?.docNo} />
           ))}
         </JournalDetailPanel>
       )}
     </div>
   );
+}
+
+/** "44" normally; "1 จาก 44" while a doc-number search narrows the list. */
+function panelCount(shown: number, total: number, search: DocSearch | null): string {
+  return search?.docNo
+    ? `${shown.toLocaleString("th-TH")} จาก ${total.toLocaleString("th-TH")}`
+    : total.toLocaleString("th-TH");
 }
 
 function JournalDetailPanel({ title, children }: { title: string; children: ReactNode }) {
@@ -663,9 +784,17 @@ function Chip({ icon: Icon, label, color }: { icon?: typeof User; label: string;
   );
 }
 
-function JournalEntryCard({ journal, fs }: { journal: KpiCombinedTaskItem["journalEntries"][number]; fs: (n: number) => string }) {
+function JournalEntryCard({
+  journal,
+  fs,
+  highlighted = false,
+}: {
+  journal: KpiCombinedTaskItem["journalEntries"][number];
+  fs: (n: number) => string;
+  highlighted?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm">
+    <div className={`rounded-xl border bg-card px-3 py-2.5 shadow-sm ${highlighted ? "border-info ring-2 ring-info/30" : "border-border"}`}>
       <p className="font-medium" style={{ fontSize: fs(11) }}>
         {journal.docNo} <span className="text-muted-foreground">· {journal.accountName}</span>
       </p>
@@ -680,14 +809,22 @@ function JournalEntryCard({ journal, fs }: { journal: KpiCombinedTaskItem["journ
   );
 }
 
-function OrphanJournalCard({ journal, fs }: { journal: KpiCombinedTaskItem["journalEntries"][number]; fs: (n: number) => string }) {
+function OrphanJournalCard({
+  journal,
+  fs,
+  highlighted = false,
+}: {
+  journal: KpiCombinedTaskItem["journalEntries"][number];
+  fs: (n: number) => string;
+  highlighted?: boolean;
+}) {
   const reason = !journal.documentRef && !journal.jobGuidfixed
     ? "ยังไม่มีรูปหรือเอกสารอ้างอิงสำหรับรายการนี้"
     : !journal.resolvedTaskGuidFound
       ? "มีเอกสารอ้างอิงแล้ว แต่ยังไม่พบงานที่ตรงกัน"
       : "เชื่อมกับงานแล้ว";
   return (
-    <div className="rounded-xl border border-dashed border-status-warning/40 bg-status-warning-soft px-3 py-2.5">
+    <div className={`rounded-xl border border-dashed border-status-warning/40 bg-status-warning-soft px-3 py-2.5 ${highlighted ? "ring-2 ring-info/30" : ""}`}>
       <p className="font-medium" style={{ fontSize: fs(11) }}>
         {journal.docNo} <span className="text-muted-foreground">· {journal.accountName}</span>
       </p>
