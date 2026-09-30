@@ -37,26 +37,35 @@ function registerFonts() {
   fontsRegistered = true;
 }
 
+// react-pdf only wraps at spaces and Thai has none, so long labels carry an
+// explicit "\n" to stay inside their narrow column.
 const headers = [
   "ร้าน / งาน / รายการ",
-  "บิลที่รับผิดชอบ",
-  "อัปโหลดโดยคนนี้",
+  "บิลที่\nรับผิดชอบ",
+  "อัปโหลด\nโดยคนนี้",
   "รอตรวจสอบ",
   "ผ่าน",
   "ไม่ผ่าน",
   "ไม่บันทึก",
-  "ไม่ต้องอนุมัติ",
-  "ต้องบันทึก (งาน)",
-  "บันทึกแล้ว (งาน)",
+  "ไม่ต้อง\nอนุมัติ",
+  "ต้องบันทึก\n(งาน)",
+  "บันทึกแล้ว\n(งาน)",
   "คงเหลือ",
   "เสร็จ",
   "คีย์",
-  "คีย์ (ไม่มีรูป)",
+  "คีย์\n(ไม่มีรูป)",
   "คีย์รวม",
   "ตรวจสอบ",
   "แก้ไข",
-  "AI วิเคราะห์แล้ว",
+  "AI\nวิเคราะห์แล้ว",
 ];
+
+// Same column groups as the on-screen KPI table: a thicker rule sits on the
+// left of each group's first column (ตรวจสอบ / บันทึกบัญชี / GL / OCR).
+const GROUP_START_COLUMNS = new Set(
+  ["รอตรวจสอบ", "ต้องบันทึก\n(งาน)", "คีย์", "AI\nวิเคราะห์แล้ว"].map((label) => headers.indexOf(label))
+);
+const GROUP_DIVIDER_WIDTH = 1;
 
 const detailHeaders = ["เลขที่เอกสาร", "ร้าน", "งาน", "บัญชี", "เดบิต/เครดิต", "คีย์โดย", "คีย์เมื่อ"];
 
@@ -127,7 +136,14 @@ function PdfTableRow({ cells, header = false, total = false, context = false }: 
   return (
     <View style={[styles.row, header ? styles.headerRow : {}, total ? styles.totalRow : {}, context ? styles.contextRow : {}]} wrap={false}>
       {cells.map((cell, index) => (
-        <View key={index} style={index === 0 ? styles.firstCell : styles.cell}>
+        <View
+          key={index}
+          style={[
+            index === 0 ? styles.firstCell : styles.cell,
+            // The divider is drawn as the right border of the cell before the group.
+            GROUP_START_COLUMNS.has(index + 1) ? { borderRightWidth: GROUP_DIVIDER_WIDTH } : {},
+          ]}
+        >
           <Text style={header ? styles.headerText : {}}>
             {!header && index === 0 ? `${formatPdfCell(cell, false)}\u00A0` : formatPdfCell(cell, header)}
           </Text>

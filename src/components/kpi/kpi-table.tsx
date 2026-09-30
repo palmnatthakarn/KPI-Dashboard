@@ -35,13 +35,16 @@ const STATUS_LABELS: Record<number, { label: string; color: string }> = {
   6: { label: "ไม่ต้องอนุมัติ", color: KpiColors.assigned },
 };
 
-function numCell(value: number, bg?: string) {
+/** Thicker left rule marking where a column group (ตรวจสอบ / บันทึกบัญชี / GL / OCR) begins. */
+const GROUP_DIVIDER = "border-l-2 border-l-border";
+
+function numCell(value: number, bg?: string, groupStart = false) {
   const isZero = value === 0;
   return (
     <div
       className={`flex h-full items-center justify-center border-l border-border text-[12px] font-semibold tabular-nums ${
         isZero ? "text-muted-foreground/60" : "text-foreground"
-      }`}
+      } ${groupStart ? GROUP_DIVIDER : ""}`}
       style={{ backgroundColor: bg }}
     >
       {isZero ? "—" : value.toLocaleString("th-TH")}
@@ -76,21 +79,21 @@ function numericColumns(stats: {
 }) {
   return (
     <>
-      {numCell(stats.waitingVerify)}
+      {numCell(stats.waitingVerify, undefined, true)}
       {numCell(stats.passed)}
       {numCell(stats.cancelled)}
       {numCell(stats.notRecorded)}
       {numCell(stats.notRequiredApproval)}
-      {numCell(stats.requiredToRecord)}
+      {numCell(stats.requiredToRecord, undefined, true)}
       {numCell(stats.recorded)}
       {numCell(stats.remaining)}
       {numCell(stats.completed)}
-      {numCell(stats.journalCount)}
+      {numCell(stats.journalCount, undefined, true)}
       {numCell(stats.journalCountNoPhoto)}
       {numCell(stats.journalCount + stats.journalCountNoPhoto)}
       {numCell(stats.journalChecked)}
       {numCell(stats.journalUpdated)}
-      {numCell(stats.ocrAnalyzed)}
+      {numCell(stats.ocrAnalyzed, undefined, true)}
     </>
   );
 }
@@ -108,10 +111,10 @@ function journalStatsForTask(task: KpiCombinedTaskItem) {
 const GROUP_HEADERS = [
   { label: "", span: 1, tinted: false },
   { label: "", span: 1, tinted: true },
-  { label: "สถานะการตรวจสอบ", span: 5, tinted: true },
-  { label: "สถานะการบันทึกบัญชี", span: 4, tinted: true },
-  { label: "บันทึกบัญชี (GL)", span: 5, tinted: true },
-  { label: "OCR", span: 1, tinted: true },
+  { label: "สถานะการตรวจสอบ", span: 5, tinted: true, groupStart: true },
+  { label: "สถานะการบันทึกบัญชี", span: 4, tinted: true, groupStart: true },
+  { label: "บันทึกบัญชี (GL)", span: 5, tinted: true, groupStart: true },
+  { label: "OCR", span: 1, tinted: true, groupStart: true },
   { label: "", span: 1, tinted: false },
 ];
 
@@ -135,6 +138,9 @@ const COLUMN_LABELS = [
   "AI วิเคราะห์แล้ว",
   "",
 ];
+
+/** First column of each group that gets GROUP_DIVIDER; keep in sync with numericColumns. */
+const GROUP_START_LABELS = new Set(["รอตรวจสอบ", "ต้องบันทึก(งาน)", "คีย์", "AI วิเคราะห์แล้ว"]);
 
 const COLUMN_TOOLTIPS: Record<string, string> = {
   "ต้องบันทึก(งาน)": "คำนวณจากสถานะของงาน (task) ฝั่ง /task",
@@ -298,7 +304,7 @@ export function KpiTable({
               style={{ gridColumn: `span ${g.span}`, fontSize: fs(10) }}
               className={`flex h-6 items-center justify-center font-semibold uppercase tracking-wide text-muted-foreground ${
                 g.tinted ? "bg-secondary" : ""
-              }`}
+              } ${"groupStart" in g && g.groupStart ? GROUP_DIVIDER : ""}`}
             >
               {g.label}
             </div>
@@ -311,7 +317,9 @@ export function KpiTable({
               key={i}
               title={COLUMN_TOOLTIPS[label]}
               style={{ fontSize: fs(11) }}
-              className={`flex h-10 items-center border-l border-border px-2 font-semibold text-muted-foreground ${i === 0 ? "justify-start border-l-0" : "justify-center text-center"}`}
+              className={`flex h-10 items-center border-l border-border px-2 font-semibold text-muted-foreground ${i === 0 ? "justify-start border-l-0" : "justify-center text-center"} ${
+                GROUP_START_LABELS.has(label) ? GROUP_DIVIDER : ""
+              }`}
             >
               {label}
             </div>
