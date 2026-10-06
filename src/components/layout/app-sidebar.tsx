@@ -67,7 +67,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
       )}
       <aside
         className={cn(
-          "relative z-50 flex h-screen flex-col border-r border-border/80 bg-card/80 shadow-[12px_0_40px_rgba(15,23,42,0.04)] backdrop-blur-xl transition-all duration-200",
+          "relative z-50 flex h-screen shrink-0 flex-col border-r border-border/80 bg-card/80 shadow-[12px_0_40px_rgba(15,23,42,0.04)] backdrop-blur-xl transition-all duration-200",
           "fixed md:sticky top-0",
           collapsed ? "w-[72px]" : "w-[280px] 2xl:w-[300px]",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"

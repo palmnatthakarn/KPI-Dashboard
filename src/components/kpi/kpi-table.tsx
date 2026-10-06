@@ -18,7 +18,9 @@ import {
 } from "@/lib/kpi/kpi-doc-search";
 import type { KpiCombinedEmployee, KpiCombinedShopStat, KpiCombinedTaskItem } from "@/types/kpi-combined";
 
-const NUMERIC_COL_MIN_WIDTH = 72;
+// Narrow enough that the 16 KPI columns fit a typical laptop next to the
+// sidebar; wider screens stretch every column via 1fr.
+const NUMERIC_COL_MIN_WIDTH = 62;
 const GRID_MIN_WIDTH =
   KpiDimensions.nameColWidth +
   KpiDimensions.numColCount * NUMERIC_COL_MIN_WIDTH +
@@ -316,7 +318,7 @@ export function KpiTable({
               key={i}
               title={COLUMN_TOOLTIPS[label]}
               style={{ fontSize: fs(11) }}
-              className={`flex h-10 items-center border-l border-border px-2 font-semibold text-muted-foreground ${i === 0 ? "justify-start border-l-0" : "justify-center text-center"} ${
+              className={`flex min-h-10 items-center border-l border-border px-1.5 py-1 font-semibold leading-tight text-muted-foreground ${i === 0 ? "justify-start border-l-0" : "justify-center text-center"} ${
                 GROUP_START_LABELS.has(label) ? GROUP_DIVIDER : ""
               }`}
             >

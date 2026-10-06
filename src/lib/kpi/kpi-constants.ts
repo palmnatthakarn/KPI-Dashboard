@@ -69,10 +69,10 @@ export const KpiDimensions = {
   expandIconWidth: 40,
   avatarTotalWidth: 44,
 
-  nameColWidth: 290,
+  nameColWidth: 240,
   numColWidth: 90,
   numColCount: 16,
-  expandColWidth: 50,
+  expandColWidth: 40,
 } as const;
 
 export const KPI_DATE_FILTER_STORAGE_PREFIX = "kpi_combined";

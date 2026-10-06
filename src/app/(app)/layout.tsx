@@ -121,7 +121,10 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
         onCloseMobile={() => setMobileOpen(false)}
       />
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      {/* min-w-0: without it this flex item grows to its widest child (e.g. the
+          KPI table's min-width) and the whole page scrolls sideways, pushing
+          the sidebar off-screen. Wide content scrolls inside its own card. */}
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-border/80 bg-card/80 px-4 py-3 backdrop-blur-xl md:hidden">
           <button onClick={() => setMobileOpen(true)} aria-label="เปิดเมนู">
             <Menu className="h-5 w-5" />
@@ -129,7 +132,7 @@ export default function AppShellLayout({ children }: { children: React.ReactNode
           <span className="text-sm font-semibold">KPI Dashboard</span>
         </header>
 
-        <main className="flex-1 p-3 md:p-4 lg:p-5 2xl:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-3 md:p-4 lg:p-5 2xl:p-6">{children}</main>
       </div>
     </div>
   );
