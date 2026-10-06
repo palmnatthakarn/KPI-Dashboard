@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api/client";
 import { selectShop } from "@/lib/api/multi-shop-service";
-import { hasOcrAnalysis, parseDocumentImage, type DocumentImage } from "@/types/document-image";
+import { hasOcrAnalysis, ocrProcessedAt, parseDocumentImage, type DocumentImage } from "@/types/document-image";
 
 /**
  * Ported from DocumentImageService.fetchDocNoToTaskGuidMap /
@@ -214,7 +214,9 @@ export async function fetchDocNoToTaskGuidMap(params: {
           ).trim();
           const groupTitle = String(firstValue(item, ["title", "name"]) ?? "").trim();
           const groupOrder = parseIntSafe(firstValue(item, ["xorder", "xOrder", "x_order"]));
-          const groupOcrAnalyzed = hasOcrAnalysis(firstValue(item, OCR_ANALYZE_KEYS));
+          const groupOcr = firstValue(item, OCR_ANALYZE_KEYS);
+          const groupOcrAnalyzed = hasOcrAnalysis(groupOcr);
+          const groupOcrAnalyzedAt = ocrProcessedAt(groupOcr);
           const groupDocNo =
             Array.isArray(refsRaw) && refsRaw.length > 0
               ? String(
@@ -236,6 +238,7 @@ export async function fetchDocNoToTaskGuidMap(params: {
               groupDocNo: groupDocNo || null,
             };
             image.ocrAnalyzed = image.ocrAnalyzed || groupOcrAnalyzed;
+            image.ocrAnalyzedAt = image.ocrAnalyzedAt ?? groupOcrAnalyzedAt;
             if (image.imageId || image.imageUrl) {
               uploadedImages.push(image);
               groupImages.push(image);
@@ -296,7 +299,9 @@ export async function fetchDocumentImageGroupImages(documentRef: string): Promis
     const groupGuid = String(firstValue(item, ["guidfixed", "guidFixed", "guid_fixed"]) ?? "").trim();
     const groupTitle = String(firstValue(item, ["title", "name"]) ?? "").trim();
     const groupOrder = parseIntSafe(firstValue(item, ["xorder", "xOrder", "x_order"]));
-    const groupOcrAnalyzed = hasOcrAnalysis(firstValue(item, OCR_ANALYZE_KEYS));
+    const groupOcr = firstValue(item, OCR_ANALYZE_KEYS);
+    const groupOcrAnalyzed = hasOcrAnalysis(groupOcr);
+    const groupOcrAnalyzedAt = ocrProcessedAt(groupOcr);
     const refsRaw = firstValue(item, ["references", "reference", "documentReferences"]);
     const groupDocNo =
       Array.isArray(refsRaw) && refsRaw.length > 0
@@ -318,6 +323,7 @@ export async function fetchDocumentImageGroupImages(documentRef: string): Promis
         return {
           ...image,
           ocrAnalyzed: image.ocrAnalyzed || groupOcrAnalyzed,
+          ocrAnalyzedAt: image.ocrAnalyzedAt ?? groupOcrAnalyzedAt,
           groupId: groupGuid || ref,
         groupTitle: groupTitle || null,
         groupOrder,

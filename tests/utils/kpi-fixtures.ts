@@ -24,6 +24,7 @@ export function makeEmployee(
     totalChecked: 0,
     totalUpdated: 0,
     totalUploaded: 0,
+    totalOcrAnalyzed: 0,
     shopStats: [],
     ...overrides,
   };

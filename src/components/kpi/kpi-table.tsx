@@ -7,7 +7,6 @@ import { Pagination } from "@/components/common/pagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiColors, KpiDimensions } from "@/lib/kpi/kpi-constants";
 import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
-import { countOcrAnalyzedGroups, countOcrAnalyzedGroupsUploadedBy } from "@/types/document-image";
 import {
   EMPTY_DOC_SEARCH,
   isDocSearchActive,
@@ -147,7 +146,7 @@ const COLUMN_TOOLTIPS: Record<string, string> = {
   คีย์: "นับจำนวนรายการบันทึกบัญชี (GL) ไม่ใช่จำนวนเอกสาร",
   "คีย์(ไม่มีรูป)": "รายการที่คีย์โดยไม่มีรูปหรือเอกสารอ้างอิง",
   คีย์รวม: "= คีย์ + คีย์(ไม่มีรูป)",
-  "AI วิเคราะห์แล้ว": "จำนวนชุดเอกสาร (/documentimagegroup) ที่มีผล ocranalyzeai แล้ว",
+  "AI วิเคราะห์แล้ว": "ชุดเอกสารที่ AI วิเคราะห์แล้ว — นับให้คนที่บันทึกบัญชี (GL) จากชุดนั้น ถ้ายังไม่มีใครบันทึกนับให้คนอัปโหลด",
 };
 
 /** Ported from KpiCombinedPage's DataTable2 + 3-level expand/collapse drill-down. */
@@ -364,10 +363,7 @@ export function KpiTable({
                   journalCountNoPhoto: emp.totalJournalsNoPhoto,
                   journalChecked: emp.totalChecked,
                   journalUpdated: emp.totalUpdated,
-                  ocrAnalyzed: emp.shopStats.reduce(
-                    (sum, sh) => sum + countOcrAnalyzedGroupsUploadedBy(sh.uploadedImages, emp.name),
-                    0
-                  ),
+                  ocrAnalyzed: emp.totalOcrAnalyzed,
                 })}
                 <div className="flex items-center justify-center text-muted-foreground group-hover:text-info-strong">
                   {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -627,7 +623,7 @@ function ShopRow({
           journalCountNoPhoto: shop.journalCountNoPhoto,
           journalChecked: shop.journalChecked,
           journalUpdated: shop.journalUpdated,
-          ocrAnalyzed: countOcrAnalyzedGroupsUploadedBy(shop.uploadedImages, employeeName),
+          ocrAnalyzed: shop.ocrAnalyzedCount,
         })}
         <div className="flex items-center justify-center text-muted-foreground group-hover/shop:text-foreground">
           {expandable ? isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" /> : null}
@@ -739,7 +735,7 @@ function TaskRow({
           journalCountNoPhoto: journalStats.journalCountNoPhoto,
           journalChecked: journalStats.journalChecked,
           journalUpdated: journalStats.journalUpdated,
-          ocrAnalyzed: countOcrAnalyzedGroups(task.uploadedImages),
+          ocrAnalyzed: task.ocrAnalyzedCount,
         })}
         <div className="flex items-center justify-center text-muted-foreground group-hover/task:text-info-strong">
           {expandable ? isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" /> : null}

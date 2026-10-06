@@ -10,7 +10,6 @@ import {
   pdf,
 } from "@react-pdf/renderer";
 import { getDisplayName } from "@/lib/employee/employee-mapping-service";
-import { countOcrAnalyzedGroupsUploadedBy } from "@/types/document-image";
 import {
   EMPTY_DOC_SEARCH,
   collectMatchedJournals,
@@ -109,7 +108,7 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", left: 22, right: 22, bottom: 10, flexDirection: "row", justifyContent: "space-between", fontSize: 6, color: "#64748b" },
 });
 
-function shopCells(shop: KpiCombinedEmployee["shopStats"][number], employeeName: string): string[] {
+function shopCells(shop: KpiCombinedEmployee["shopStats"][number]): string[] {
   return [
     shop.shopName,
     String(shop.totalDocuments),
@@ -128,7 +127,7 @@ function shopCells(shop: KpiCombinedEmployee["shopStats"][number], employeeName:
     String(shop.journalCount + shop.journalCountNoPhoto),
     String(shop.journalChecked),
     String(shop.journalUpdated),
-    String(countOcrAnalyzedGroupsUploadedBy(shop.uploadedImages, employeeName)),
+    String(shop.ocrAnalyzedCount),
   ];
 }
 
@@ -227,10 +226,10 @@ function KpiPdfDocument({
           // thousands of task/journal detail rows. The printable report uses
           // the same KPI totals summarized per employee and shop, which is
           // the useful management view and avoids freezing the browser.
-          const rows = employee.shopStats.map((shop) => shopCells(shop, employee.name));
+          const rows = employee.shopStats.map((shop) => shopCells(shop));
           const [firstRow, ...remainingRows] = rows;
           const totals = employee.shopStats.reduce(
-            (acc, shop) => acc.map((value, index) => index === 0 ? 0 : value + (Number(shopCells(shop, employee.name)[index]) || 0)),
+            (acc, shop) => acc.map((value, index) => index === 0 ? 0 : value + (Number(shopCells(shop)[index]) || 0)),
             headers.map(() => 0)
           );
           return (

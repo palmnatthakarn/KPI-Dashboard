@@ -28,6 +28,7 @@ const zeroStats = {
   journalChecked: 0,
   journalUpdated: 0,
   uploadedCount: 0,
+  ocrAnalyzedCount: 0,
 };
 
 const journal = (docNo: string) =>

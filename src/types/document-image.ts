@@ -10,6 +10,8 @@ export interface DocumentImage {
   imageUrl: string | null;
   /** True when its /documentimagegroup item (or the image itself) has a non-empty `ocranalyzeai`. */
   ocrAnalyzed?: boolean;
+  /** When the AI analysis ran: `ocranalyzeai.metadata.processed_at`. */
+  ocrAnalyzedAt?: string | null;
   /** Parent /documentimagegroup identity. Images sharing this value are one set. */
   groupId?: string | null;
   groupTitle?: string | null;
@@ -48,15 +50,20 @@ export function countOcrAnalyzedGroups(images: DocumentImage[]): number {
 }
 
 /**
- * OCR-analyzed sets credited to one employee. `ocranalyzeai` does not record
- * who ran the OCR, so the set is credited to whoever uploaded its images —
- * not to people who only keyed journals referencing it.
+ * `ocranalyzeai.metadata.processed_at`. The API sends `ocranalyzeai` as a JSON
+ * string (sometimes already an object); anything unreadable yields null.
  */
-export function countOcrAnalyzedGroupsUploadedBy(images: DocumentImage[], uploader: string): number {
-  const target = uploader.trim().toLowerCase();
-  return countOcrAnalyzedGroups(
-    images.filter((image) => (image.uploadedBy ?? "").trim().toLowerCase() === target)
-  );
+export function ocrProcessedAt(value: unknown): string | null {
+  let parsed: unknown = value;
+  if (typeof value === "string") {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  const processedAt = (parsed as { metadata?: { processed_at?: unknown } } | null)?.metadata?.processed_at;
+  return typeof processedAt === "string" && processedAt.trim() ? processedAt.trim() : null;
 }
 
 export function hasOcrAnalysis(value: unknown): boolean {
@@ -119,5 +126,6 @@ export function parseDocumentImage(json: any): DocumentImage {
     uploadedBy: json?.uploadedby?.toString() ?? json?.uploadedBy?.toString() ?? json?.uploaded_by?.toString() ?? null,
     imageUrl: resolveDocumentImageUrl(rawImageUrl),
     ocrAnalyzed: hasOcrAnalysis(json?.ocranalyzeai ?? json?.ocrAnalyzeAi ?? json?.ocrAnalyzeAI),
+    ocrAnalyzedAt: ocrProcessedAt(json?.ocranalyzeai ?? json?.ocrAnalyzeAi ?? json?.ocrAnalyzeAI),
   };
 }

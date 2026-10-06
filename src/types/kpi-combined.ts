@@ -46,6 +46,8 @@ export interface KpiCombinedTaskItem {
   uploadedByThisEmployee: number;
   /** The exact image-reference records behind uploadedByThisEmployee. */
   uploadedImages: DocumentImage[];
+  /** OCR-analyzed sets of this task credited to this row's employee (see KpiCombinedShopStat). */
+  ocrAnalyzedCount: number;
   /** Owner row = every entry linked to task; contributor row = scoped to just that employee's own entries. */
   journalEntries: KpiCombinedJournalItem[];
   waitingVerify: number;
@@ -83,6 +85,11 @@ export interface KpiCombinedShopStat {
   uploadedCount: number;
   /** Exact uploaded-image records included in this employee/shop KPI row. */
   uploadedImages: DocumentImage[];
+  /**
+   * OCR-analyzed document sets credited to this employee: whoever keyed a GL
+   * journal from the set, or — when nobody has keyed it — whoever uploaded it.
+   */
+  ocrAnalyzedCount: number;
   /** Sorted by ownerAt descending. */
   tasks: KpiCombinedTaskItem[];
   /** GL rows counted in totals above but whose resolved task guid isn't in `tasks`. */
@@ -116,6 +123,7 @@ export interface KpiCombinedEmployee {
   totalChecked: number;
   totalUpdated: number;
   totalUploaded: number;
+  totalOcrAnalyzed: number;
   shopStats: KpiCombinedShopStat[];
 }
 

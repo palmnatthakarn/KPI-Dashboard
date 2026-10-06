@@ -1,4 +1,4 @@
-import type { DocumentImage } from "@/types/document-image";
+import { getDocumentImageGroupKey, type DocumentImage } from "@/types/document-image";
 import type { Journal } from "@/types/journal";
 import type { TaskItem } from "@/types/task";
 import { getStatusCount } from "@/types/task";
@@ -105,6 +105,8 @@ interface ShopAcc {
   journalUpdated: number;
   uploadedCount: number;
   journalUploadedImages: DocumentImage[];
+  /** Group keys of OCR-analyzed sets credited to this employee in this shop. */
+  ocrGroups: Set<string>;
   tasks: KpiCombinedTaskItem[];
   orphanJournalEntries: KpiCombinedJournalItem[];
   /** dedupe key set for orphan journal insertion, keyed by docNo+keyedAt. */
@@ -128,6 +130,7 @@ function newShopAcc(): ShopAcc {
     journalUpdated: 0,
     uploadedCount: 0,
     journalUploadedImages: [],
+    ocrGroups: new Set(),
     tasks: [],
     orphanJournalEntries: [],
     _orphanSeen: new Set(),
@@ -240,6 +243,48 @@ export function reconcileKpiEmployees(
       documentRefUploadedImages,
     } = shop;
 
+    // Only sets the AI analyzed inside the selected range count; when the
+    // result carries no processed_at, the upload time stands in for it.
+    const countsAsOcrInRange = (image: DocumentImage) =>
+      !!image.ocrAnalyzed &&
+      inRange(parseDateSafe(image.ocrAnalyzedAt ?? image.uploadedAt), startOfDay, endOfDay);
+
+    // OCR credit: each OCR-analyzed document set goes to whoever keyed a GL
+    // journal from it; a set nobody has keyed yet goes to its uploader(s).
+    // A journal finds its set via documentref, else via references[].docno.
+    const ocrSets = new Map<string, Set<string>>(); // groupKey -> uploaders
+    const ocrGroupByDocNo = new Map<string, string>();
+    const ocrGroupByRef = new Map<string, string>();
+    const registerOcrImages = (images: DocumentImage[], ref?: string) => {
+      images.forEach((image, i) => {
+        if (!countsAsOcrInRange(image)) return;
+        const key = getDocumentImageGroupKey(image, i);
+        const uploaders = ocrSets.get(key) ?? new Set<string>();
+        const uploader = (image.uploadedBy ?? "").trim();
+        if (uploader) uploaders.add(uploader);
+        ocrSets.set(key, uploaders);
+        const docNo = norm(image.groupDocNo);
+        if (docNo) ocrGroupByDocNo.set(docNo, key);
+        if (ref) ocrGroupByRef.set(ref, key);
+      });
+    };
+    for (const images of shop.taskUploadedImages.values()) registerOcrImages(images);
+    for (const [ref, images] of documentRefUploadedImages) registerOcrImages(images, norm(ref));
+
+    const ocrKeyers = new Map<string, Set<string>>(); // groupKey -> keyers
+    for (const j of journals) {
+      const creator = (j.createdby ?? "").trim();
+      if (!creator) continue;
+      const key = ocrGroupByRef.get(norm(j.documentref)) ?? ocrGroupByDocNo.get(norm(j.docno));
+      if (!key) continue;
+      const keyers = ocrKeyers.get(key) ?? new Set<string>();
+      keyers.add(creator);
+      ocrKeyers.set(key, keyers);
+    }
+    const ocrCreditedTo = (key: string): Set<string> => ocrKeyers.get(key) ?? ocrSets.get(key) ?? new Set();
+    // Task rows are filled in once every set's credit is known (after the task loop).
+    const pendingTaskOcr: { item: KpiCombinedTaskItem; employee: string; images: DocumentImage[] }[] = [];
+
     // Step 5 — group journals by resolved task guid within this shop.
     const journalsByTaskGuid = new Map<string, Journal[]>();
     const resolvedByJournal = new Map<Journal, { guid: string | null; noPhoto: boolean; orphan: boolean }>();
@@ -345,6 +390,8 @@ export function reconcileKpiEmployees(
       const taskRemainingOwner = Math.max(0, taskRequiredToRecord - ownerRecorded);
 
       // Step 8 — owner row ("Row A").
+      const taskImages = [...linkedGuids].flatMap((guid) => normalizedTaskUploadedImages.get(guid) ?? []);
+
       if (task.ownerBy) {
         const acc = getAcc(task.ownerBy, shopName);
         acc.totalDocuments += task.totalDocument;
@@ -368,6 +415,7 @@ export function reconcileKpiEmployees(
           keyedByThisEmployee: 0,
           uploadedByThisEmployee: uploaderMap.get(task.ownerBy) ?? 0,
           uploadedImages: uploaderImagesMap.get(task.ownerBy) ?? [],
+          ocrAnalyzedCount: 0,
           journalEntries: inRangeJournals.map((j) => {
             const r = resolvedByJournal.get(j)!;
             return toKpiJournalItem(j, r.guid, !r.orphan);
@@ -382,6 +430,7 @@ export function reconcileKpiEmployees(
           remaining: taskRemainingOwner,
           completed: taskCompleted,
         });
+        pendingTaskOcr.push({ item: acc.tasks[acc.tasks.length - 1], employee: task.ownerBy, images: taskImages });
       }
 
       // Step 8 — contributor rows ("Row B"): everyone in keyers ∪ uploaders, minus owner.
@@ -406,6 +455,7 @@ export function reconcileKpiEmployees(
           keyedByThisEmployee: keyedDocumentCount,
           uploadedByThisEmployee,
           uploadedImages: uploaderImagesMap.get(contributor) ?? [],
+          ocrAnalyzedCount: 0,
           journalEntries: contributorJournals.map((j) => {
             const r = resolvedByJournal.get(j)!;
             return toKpiJournalItem(j, r.guid, !r.orphan);
@@ -420,6 +470,7 @@ export function reconcileKpiEmployees(
           remaining: Math.max(0, taskRequiredToRecord - keyedDocumentCount),
           completed: taskCompleted,
         });
+        pendingTaskOcr.push({ item: acc.tasks[acc.tasks.length - 1], employee: contributor, images: taskImages });
       }
     }
 
@@ -483,6 +534,14 @@ export function reconcileKpiEmployees(
       }
     }
 
+    for (const key of ocrSets.keys()) {
+      for (const employee of ocrCreditedTo(key)) getAcc(employee, shopName).ocrGroups.add(key);
+    }
+    for (const { item, employee, images } of pendingTaskOcr) {
+      const keys = new Set(images.filter(countsAsOcrInRange).map((image, i) => getDocumentImageGroupKey(image, i)));
+      item.ocrAnalyzedCount = [...keys].filter((key) => ocrCreditedTo(key).has(employee)).length;
+    }
+
     // Step 12 — journalRequiredDocs, broadcast onto every employee touched by this shop.
     for (const [employee, shops] of touchedShopsByEmployee) {
       if (!shops.has(shopName)) continue;
@@ -514,6 +573,7 @@ export function reconcileKpiEmployees(
     let totalChecked = 0;
     let totalUpdated = 0;
     let totalUploaded = 0;
+    let totalOcrAnalyzed = 0;
     let lastActive: Date | null = null;
 
     for (const [shopName, acc] of shopMap) {
@@ -543,6 +603,7 @@ export function reconcileKpiEmployees(
         journalUpdated: acc.journalUpdated,
         uploadedCount: uploadedInShop,
         uploadedImages,
+        ocrAnalyzedCount: acc.ocrGroups.size,
         tasks: [...acc.tasks].sort((a, b) => b.ownerAt.getTime() - a.ownerAt.getTime()),
         orphanJournalEntries: acc.orphanJournalEntries,
       });
@@ -562,6 +623,7 @@ export function reconcileKpiEmployees(
       totalChecked += acc.journalChecked;
       totalUpdated += acc.journalUpdated;
       totalUploaded += uploadedInShop;
+      totalOcrAnalyzed += acc.ocrGroups.size;
 
       for (const t of acc.tasks) {
         if (!lastActive || t.ownerAt.getTime() > lastActive.getTime()) lastActive = t.ownerAt;
@@ -589,6 +651,7 @@ export function reconcileKpiEmployees(
       totalChecked,
       totalUpdated,
       totalUploaded,
+      totalOcrAnalyzed,
       shopStats,
     });
   }
