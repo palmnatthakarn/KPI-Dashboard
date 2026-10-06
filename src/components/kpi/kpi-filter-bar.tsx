@@ -131,7 +131,7 @@ export function KpiFilterBar({
 
   return (
     <div className="rounded-2xl border border-border bg-card p-3 shadow-sm">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_minmax(240px,1fr)_150px_150px_auto] xl:items-start">
+      <div className={cn(FILTER_GRID, "xl:items-start")}>
         <div className="min-w-0">
           <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">พนักงาน</label>
           <SearchableMultiDropdown
@@ -202,7 +202,7 @@ export function KpiFilterBar({
             type="button"
             disabled={isSearching || !draftStartValid || !draftEndValid}
             onClick={handleSearch}
-            className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 xl:flex-none"
+            className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 xl:flex-none"
           >
             {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchIcon className="h-4 w-4" />}
             ค้นหา
@@ -212,7 +212,7 @@ export function KpiFilterBar({
 
       {advancedOpen && (
         <div id="kpi-advanced-search" className="mt-3 border-t border-border pt-3">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_minmax(240px,1fr)_150px_150px_auto]"
+          <div className={FILTER_GRID}
           >
             <div className="min-w-0">
               <label htmlFor="kpi-docno-search" className="mb-1.5 block text-[11px] font-medium text-muted-foreground">
@@ -282,6 +282,11 @@ export function KpiFilterBar({
     </div>
   );
 }
+
+// Dropdowns may shrink (minmax(0,…)) so the dates and buttons always fit
+// next to the sidebar; the advanced row reuses it to stay column-aligned.
+const FILTER_GRID =
+  "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(128px,150px)_minmax(128px,150px)_auto]";
 
 const DOC_LINK_OPTIONS: { value: DocLinkFilter; label: string }[] = [
   { value: "all", label: "ทั้งหมด" },

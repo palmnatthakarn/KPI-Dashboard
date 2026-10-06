@@ -101,8 +101,9 @@ export function SearchableMultiDropdown({
         </>
       )}
 
+      {/* Chip row only when something is selected, so an empty filter bar has no blank band under the fields. */}
+      {selectedIds.length > 0 && (
       <div className="mt-1.5 h-6 overflow-hidden">
-        {selectedIds.length > 0 && (
         <div className="flex h-full items-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap pr-1">
           {selectedIds.map((id) => {
             const item = items.find((i) => i.id === id);
@@ -120,8 +121,8 @@ export function SearchableMultiDropdown({
             );
           })}
         </div>
-        )}
       </div>
+      )}
     </div>
   );
 }
