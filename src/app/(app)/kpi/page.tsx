@@ -46,7 +46,6 @@ export default function KpiPage() {
     uploads,
     summary,
     isLoading,
-    isFetching,
     isError,
     error,
     incompleteShops,
@@ -133,7 +132,6 @@ export default function KpiPage() {
         employeeNames={filters.employeeNames}
         startDate={filters.startDate}
         endDate={filters.endDate}
-        isSearching={isLoading || isFetching}
         onSearch={applyFilters}
         docSearch={docSearch}
         onDocSearchChange={setDocSearch}

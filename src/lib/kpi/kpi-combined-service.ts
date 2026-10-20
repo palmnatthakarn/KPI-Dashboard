@@ -310,6 +310,12 @@ export interface FetchKpiCombinedParams {
   startDate: Date;
   endDate: Date;
   forceRefresh?: boolean;
+  /**
+   * Aborting stops the fetch before the next shop: the shop in progress is
+   * finished first, since its backend shop selection must not be cut short.
+   * The promise then rejects with the signal's AbortError.
+   */
+  signal?: AbortSignal;
 }
 
 export interface FetchKpiCombinedResult {
@@ -322,7 +328,7 @@ export interface FetchKpiCombinedResult {
 }
 
 export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Promise<FetchKpiCombinedResult> {
-  const { shopIds, startDate, endDate, forceRefresh = false } = params;
+  const { shopIds, startDate, endDate, forceRefresh = false, signal } = params;
 
   const allShops = await listKpiShops();
   const targetShops = shopIds.length > 0 ? allShops.filter((s) => shopIds.includes(s.shopId)) : allShops;
@@ -370,6 +376,7 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
     // iteration only proceeds to the next shop once the current one's
     // selection + fetch has fully settled.
     for (const shop of targetShops) {
+      signal?.throwIfAborted();
       const result = await fetchShopData(shop.shopId, shop.shopName, startDate, endDate);
       if (!result.complete) incompleteShops.push(shop.shopName);
       shopResults.push(result);
@@ -402,6 +409,14 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
   });
 
   inFlight.set(key, promise);
+  // An aborted fetch must not be reused by a later search for the same key.
+  signal?.addEventListener(
+    "abort",
+    () => {
+      if (inFlight.get(key) === promise) inFlight.delete(key);
+    },
+    { once: true }
+  );
   try {
     const outcome = await promise;
     return {
@@ -412,7 +427,8 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
       incompleteShops: outcome.incompleteShops,
     };
   } finally {
-    inFlight.delete(key);
+    // A newer fetch may already own this key (this one was aborted).
+    if (inFlight.get(key) === promise) inFlight.delete(key);
   }
 }
 

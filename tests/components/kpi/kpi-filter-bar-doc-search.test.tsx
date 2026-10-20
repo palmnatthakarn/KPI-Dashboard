@@ -15,7 +15,6 @@ function renderBar() {
       employeeNames={[]}
       startDate={new Date(2026, 8, 1)}
       endDate={new Date(2026, 8, 30)}
-      isSearching={false}
       onSearch={onSearch}
       docSearch={EMPTY_DOC_SEARCH}
       onDocSearchChange={onDocSearchChange}

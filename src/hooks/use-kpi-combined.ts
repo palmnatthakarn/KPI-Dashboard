@@ -44,7 +44,9 @@ export function useKpiCombined() {
       filters.startDate.toDateString(),
       filters.endDate.toDateString(),
     ],
-    queryFn: () => {
+    // React Query aborts `signal` when a new search replaces this one, so the
+    // old fetch stops at its next shop instead of finishing every shop.
+    queryFn: ({ signal }) => {
       const forceRefresh = forceRefreshRef.current;
       forceRefreshRef.current = false;
       return fetchKpiCombinedData({
@@ -53,6 +55,7 @@ export function useKpiCombined() {
         startDate: filters.startDate,
         endDate: filters.endDate,
         forceRefresh,
+        signal,
       });
     },
     enabled: hasSearched,

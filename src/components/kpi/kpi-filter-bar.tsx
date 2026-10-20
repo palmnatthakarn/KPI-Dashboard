@@ -16,7 +16,7 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Search as SearchIcon, Loader2, SlidersHorizontal, X } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Search as SearchIcon, SlidersHorizontal, X } from "lucide-react";
 import { SearchableMultiDropdown } from "@/components/common/searchable-multi-dropdown";
 import { EMPTY_DOC_SEARCH, isDocSearchActive, type DocLinkFilter, type DocSearch } from "@/lib/kpi/kpi-doc-search";
 import { cn } from "@/lib/utils";
@@ -78,7 +78,6 @@ export function KpiFilterBar({
   employeeNames,
   startDate,
   endDate,
-  isSearching,
   onSearch,
   docSearch,
   onDocSearchChange,
@@ -89,7 +88,6 @@ export function KpiFilterBar({
   employeeNames: string[];
   startDate: Date;
   endDate: Date;
-  isSearching: boolean;
   onSearch: (filters: { shopIds: string[]; shopNames: string[]; startDate: Date; endDate: Date; employeeNames: string[] }) => void;
   /** Applied document filter; edits stay a draft until "ค้นหา" is pressed. */
   docSearch: DocSearch;
@@ -221,11 +219,12 @@ export function KpiFilterBar({
           </button>
           <button
             type="button"
-            disabled={isSearching || !draftValid}
+            // Never locked by loading: a new search replaces the one in flight.
+            disabled={!draftValid}
             onClick={handleSearch}
-            className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 xl:flex-none"
+            className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60 xl:flex-none"
           >
-            {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchIcon className="h-4 w-4" />}
+            <SearchIcon className="h-4 w-4" />
             ค้นหา
           </button>
         </div>
@@ -248,7 +247,7 @@ export function KpiFilterBar({
                   value={draftDocSearch.docNo}
                   onChange={(event) => setDraftDocSearch({ ...draftDocSearch, docNo: event.target.value })}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" && !isSearching) handleSearch();
+                    if (event.key === "Enter") handleSearch();
                   }}
                   placeholder="เช่น TR-6909-0377"
                   className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
