@@ -1,3 +1,4 @@
+import { EMPTY_DOC_SEARCH } from "@/lib/kpi/kpi-doc-search";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -61,7 +62,7 @@ const employees = [
 
 describe("KpiTable document-number search", () => {
   it("opens the matching employee, shop and task and shows only the matching journal", () => {
-    const docSearch = { docNo: "0377", link: "all" } as const;
+    const docSearch = { ...EMPTY_DOC_SEARCH, docNo: "0377", link: "all" } as const;
     render(
       <KpiTable employees={filterEmployeesByDocSearch(employees, docSearch)} fontScale={1} docSearch={docSearch} />
     );
@@ -77,7 +78,7 @@ describe("KpiTable document-number search", () => {
   });
 
   it("shows only the unassigned journals in unlinked mode", () => {
-    const docSearch = { docNo: "", link: "unlinked" } as const;
+    const docSearch = { ...EMPTY_DOC_SEARCH, docNo: "", link: "unlinked" } as const;
     render(
       <KpiTable employees={filterEmployeesByDocSearch(employees, docSearch)} fontScale={1} docSearch={docSearch} />
     );
@@ -89,7 +90,7 @@ describe("KpiTable document-number search", () => {
   });
 
   it("shows only tasks and hides unassigned journals in linked mode", () => {
-    const docSearch = { docNo: "", link: "linked" } as const;
+    const docSearch = { ...EMPTY_DOC_SEARCH, docNo: "", link: "linked" } as const;
     render(
       <KpiTable employees={filterEmployeesByDocSearch(employees, docSearch)} fontScale={1} docSearch={docSearch} />
     );

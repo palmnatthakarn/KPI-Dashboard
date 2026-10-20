@@ -40,6 +40,8 @@ describe("KpiSummaryCards", () => {
   it("renders all values when the summary is ready", () => {
     const html = renderToStaticMarkup(<KpiSummaryCards {...values} ready />);
 
+    // The upload-view-only card stays hidden on the normal KPI view.
+    expect(html).not.toContain("ชุดเอกสาร");
     expect(html).toContain('aria-busy="false"');
     for (const label of labels) expect(html).toContain(label);
     for (const value of Object.values(values)) {
@@ -64,6 +66,19 @@ describe("KpiSummaryCards", () => {
     expect(container.querySelectorAll(".animate-pulse").length).toBe(0);
     for (const value of Object.values(values)) {
       expect(container.textContent).toContain(value.toLocaleString("th-TH"));
+    }
+  });
+
+  it("leaves out cards that have no figure", () => {
+    const html = renderToStaticMarkup(
+      <KpiSummaryCards totalDocumentSets={23} totalUploaded={25} totalOcrAnalyzed={3} ready />
+    );
+
+    expect(html).toContain("ชุดเอกสาร");
+    expect(html).toContain("รูปที่อัปโหลด");
+    expect(html).toContain("AI วิเคราะห์แล้ว");
+    for (const label of ["จำนวนบิลทั้งหมด", "คงเหลือ", "รอตรวจ", "ต้องบันทึกทั้งหมด", "คีย์รวม"]) {
+      expect(html).not.toContain(label);
     }
   });
 });

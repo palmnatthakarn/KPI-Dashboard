@@ -3,9 +3,10 @@ import {
   collectMatchedJournals,
   describeDocSearch,
   filterEmployeesByDocSearch,
+  groupUploadsByUploader,
   type DocSearch,
 } from "@/lib/kpi/kpi-doc-search";
-import type { KpiCombinedEmployee } from "@/types/kpi-combined";
+import type { KpiCombinedEmployee, KpiShopUpload } from "@/types/kpi-combined";
 
 const journal = (docNo: string) => ({ docNo }) as never;
 const task = (name: string, docNos: string[]) => ({ taskName: name, journalEntries: docNos.map(journal) }) as never;
@@ -29,7 +30,12 @@ const employees = [
   employee("c", [{ name: "s4", tasks: [task("t4", ["RV-0002"])] }]),
 ];
 
-const search = (docNo: string, link: DocSearch["link"] = "all"): DocSearch => ({ docNo, link });
+const search = (docNo: string, link: DocSearch["link"] = "all", uploadFrom = "", uploadTo = ""): DocSearch => ({
+  docNo,
+  link,
+  uploadFrom,
+  uploadTo,
+});
 const shopNames = (result: KpiCombinedEmployee[]) =>
   result.map((e) => `${e.name}:${e.shopStats.map((s) => s.shopName).join("+")}`);
 
@@ -82,5 +88,42 @@ describe("collectMatchedJournals", () => {
 
   it("describes the active search", () => {
     expect(describeDocSearch(search(" 0377 ", "unlinked"))).toBe('เลขที่เอกสาร "0377" · ไม่ผูกงาน');
+  });
+});
+
+describe("groupUploadsByUploader", () => {
+  const upload = (shopName: string, uploadedBy: string, uploadedAt: string | null, imageId: string) =>
+    ({ shopName, image: { imageId, uploadedBy, uploadedAt } }) as unknown as KpiShopUpload;
+  const uploads = [
+    upload("s1", "anna", "2026-10-01T02:00:00Z", "1"),
+    upload("s1", "anna", "2026-10-05T02:00:00Z", "2"),
+    upload("s2", "anna", "2026-10-05T03:00:00Z", "3"),
+    upload("s1", "ben", "2026-10-05T04:00:00Z", "4"),
+    upload("s1", "ben", "2026-09-30T04:00:00Z", "5"),
+    upload("s1", "", "2026-10-05T04:00:00Z", "6"),
+    upload("s1", "cid", null, "7"),
+  ];
+  const summary = (s: DocSearch, employees?: string[]) =>
+    groupUploadsByUploader(uploads, s, employees).map(
+      (row) => `${row.uploader}:${row.imageCount}:${row.shops.map((shop) => `${shop.shopName}=${shop.images.length}`).join("+")}`
+    );
+
+  it("groups images uploaded in the inclusive day range by uploader and shop, most uploads first", () => {
+    expect(summary(search("", "all", "2026-10-01", "2026-10-05"))).toEqual(["anna:3:s1=2+s2=1", "ben:1:s1=1"]);
+  });
+
+  it("supports open-ended ranges and skips images with no uploader or upload time", () => {
+    expect(summary(search("", "all", "", "2026-09-30"))).toEqual(["ben:1:s1=1"]);
+    expect(summary(search("", "all", "2026-10-02", ""))).toEqual(["anna:2:s1=1+s2=1", "ben:1:s1=1"]);
+  });
+
+  it("narrows to the selected employees", () => {
+    expect(summary(search("", "all", "2026-10-01", ""), ["ben"])).toEqual(["ben:1:s1=1"]);
+  });
+
+  it("describes the upload range", () => {
+    expect(describeDocSearch(search("", "all", "2026-10-01", "2026-10-05"))).toBe("อัปโหลด 01/10/2026 – 05/10/2026");
+    expect(describeDocSearch(search("", "all", "2026-10-01", ""))).toBe("อัปโหลดตั้งแต่ 01/10/2026");
+    expect(describeDocSearch(search("", "all", "", "2026-10-05"))).toBe("อัปโหลดถึง 05/10/2026");
   });
 });

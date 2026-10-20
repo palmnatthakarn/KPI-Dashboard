@@ -7,16 +7,21 @@ import { KpiSummaryCards } from "@/components/kpi/kpi-summary-cards";
 import { KpiLoadingState } from "@/components/kpi/kpi-loading-state";
 import { KpiFilterBar } from "@/components/kpi/kpi-filter-bar";
 import { KpiTable } from "@/components/kpi/kpi-table";
+import { KpiUploadTable } from "@/components/kpi/kpi-upload-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   EMPTY_DOC_SEARCH,
+  describeDocSearch,
   filterEmployeesByDocSearch,
+  groupUploadsByUploader,
+  hasUploadRange,
   isDocSearchActive,
   type DocSearch,
 } from "@/lib/kpi/kpi-doc-search";
 import { getDisplayName, useEmployeeMappings } from "@/lib/employee/employee-mapping-service";
 import { useAuthStore } from "@/store/auth-store";
 import { formatThaiDate } from "@/lib/utils";
+import { countDocumentImageGroups } from "@/types/document-image";
 
 const FONT_SCALES = [1, 1.2, 1.4];
 
@@ -38,6 +43,7 @@ export default function KpiPage() {
     employeeNames: allEmployeeNames,
     employees,
     filteredEmployees,
+    uploads,
     summary,
     isLoading,
     isFetching,
@@ -56,6 +62,19 @@ export default function KpiPage() {
     () => filterEmployeesByDocSearch(filteredEmployees, docSearch),
     [filteredEmployees, docSearch]
   );
+  // An upload range switches the page to the upload view: images uploaded in
+  // that range by uploader, whether or not anyone keyed them.
+  const uploadView = hasUploadRange(docSearch);
+  const uploaders = useMemo(
+    () => (uploadView ? groupUploadsByUploader(uploads, docSearch, filters.employeeNames) : []),
+    [uploadView, uploads, docSearch, filters.employeeNames]
+  );
+  const uploadedImageTotal = uploaders.reduce((sum, row) => sum + row.imageCount, 0);
+  const uploadedImages = useMemo(
+    () => uploaders.flatMap((row) => row.shops.flatMap((shop) => shop.images)),
+    [uploaders]
+  );
+  const uploadedSets = useMemo(() => countDocumentImageGroups(uploadedImages), [uploadedImages]);
   const username = useAuthStore((state) => state.username);
 
   const employeeItems = allEmployeeNames.map((name) => ({ id: name, label: getDisplayName(name) }));
@@ -125,11 +144,28 @@ export default function KpiPage() {
           {/* Same caption pattern as Overview's PageHeader — lets the two
               pages' document totals be checked against each other directly
               instead of trusting that both date pickers happen to agree. */}
-          <p className="text-xs text-muted-foreground">
-            ข้อมูลสถิติ ณ วันที่ {formatThaiDate(filters.startDate)} - {formatThaiDate(filters.endDate)}
-          </p>
+          {uploadView ? (
+            <p className="text-xs text-muted-foreground">
+              รูปที่{describeDocSearch({ ...EMPTY_DOC_SEARCH, uploadFrom: docSearch.uploadFrom, uploadTo: docSearch.uploadTo })}
+              {!isLoading && ` — ${uploadedImageTotal.toLocaleString("th-TH")} รูป จาก ${uploaders.length} คน`}
+              {" "}(ไม่สนว่าคีย์แล้วหรือยัง)
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              ข้อมูลสถิติ ณ วันที่ {formatThaiDate(filters.startDate)} - {formatThaiDate(filters.endDate)}
+            </p>
+          )}
 
-          {(!isError || hasCachedKpiData) && (
+          {uploadView && (!isError || hasCachedKpiData) && (
+            // The upload view only has upload figures; the other cards are left out.
+            <KpiSummaryCards
+              totalDocumentSets={uploadedSets}
+              totalUploaded={uploadedImageTotal}
+              ready={!isLoading}
+            />
+          )}
+
+          {!uploadView && (!isError || hasCachedKpiData) && (
             <KpiSummaryCards
               totalDocuments={summary.totalDocuments}
               totalUploaded={summary.totalUploaded}
@@ -143,6 +179,7 @@ export default function KpiPage() {
           )}
 
           {/* Legend */}
+          {!uploadView && (
           <div className="flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: "#DCFCE7" }} /> เอกสาร (ต้องบันทึก(งาน) — จากสถานะงาน /task)
@@ -154,6 +191,7 @@ export default function KpiPage() {
           ● ตัวเลขสีส้ม = บริบทของงานที่ร่วมคีย์ ไม่ถูกนับเข้า total
         </span>
           </div>
+          )}
 
           <div className="rounded-2xl border border-border bg-card shadow-sm">
         {isLoading ? (
@@ -190,7 +228,18 @@ export default function KpiPage() {
                 โหลดข้อมูลไม่ครบสำหรับร้าน: {incompleteShops.join(", ")} — ลองกดค้นหาอีกครั้ง
               </div>
             )}
-            {isDocSearchActive(docSearch) && tableEmployees.length === 0 ? (
+            {uploadView ? (
+              uploaders.length === 0 ? (
+                <EmptyState
+                  icon={Search}
+                  size="page"
+                  title="ไม่พบรูปที่อัปโหลดในช่วงที่เลือก"
+                  description="ในร้านและพนักงานที่เลือก"
+                />
+              ) : (
+                <KpiUploadTable uploaders={uploaders} fontScale={fontScale} />
+              )
+            ) : isDocSearchActive(docSearch) && tableEmployees.length === 0 ? (
               <EmptyState
                 icon={Search}
                 size="page"

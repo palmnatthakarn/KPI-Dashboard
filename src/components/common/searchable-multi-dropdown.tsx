@@ -26,6 +26,7 @@ export function SearchableMultiDropdown({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -41,13 +42,26 @@ export function SearchableMultiDropdown({
     }
   }
 
+  // The typed search is cleared once an item is picked or the list closes, so
+  // the next search starts from an empty box.
+  function pick(id: string) {
+    toggle(id);
+    setQuery("");
+    searchRef.current?.focus();
+  }
+
+  function setListOpen(next: boolean) {
+    setOpen(next);
+    if (!next) setQuery("");
+  }
+
   const triggerLabel = selectedIds.length === 0 ? allLabel : `${selectedIds.length} รายการ`;
 
   return (
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setListOpen(!open)}
         className="flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 text-[12px] font-medium text-foreground shadow-sm"
       >
         <span className="truncate">{triggerLabel}</span>
@@ -56,11 +70,12 @@ export function SearchableMultiDropdown({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-40" onClick={() => setListOpen(false)} />
           <div className="absolute left-0 top-[44px] z-50 max-h-72 w-72 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
             <div className="flex items-center gap-2 border-b border-border px-3 py-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <input
+                ref={searchRef}
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -83,7 +98,7 @@ export function SearchableMultiDropdown({
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => toggle(item.id)}
+                      onClick={() => pick(item.id)}
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
                     >
                       <span

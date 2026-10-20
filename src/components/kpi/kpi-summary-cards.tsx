@@ -1,4 +1,4 @@
-import { Files, ImageUp, ListChecks, Eye, ClipboardList, KeyRound, ScanText } from "lucide-react";
+import { Files, FolderOpen, ImageUp, ListChecks, Eye, ClipboardList, KeyRound, ScanText } from "lucide-react";
 import { StatTile } from "@/components/ui/stat-tile";
 import { categoricalPalette } from "@/lib/design/tokens";
 
@@ -10,6 +10,8 @@ import { categoricalPalette } from "@/lib/design/tokens";
  */
 const CARDS = [
   { label: "จำนวนบิลทั้งหมด", key: "totalDocuments", icon: Files },
+  // Upload view only: document sets the uploaded images form.
+  { label: "ชุดเอกสาร", key: "totalDocumentSets", icon: FolderOpen, color: "#475569" },
   { label: "รูปที่อัปโหลด", key: "totalUploaded", icon: ImageUp },
   { label: "คงเหลือ", key: "remainingDocuments", icon: ListChecks },
   { label: "รอตรวจ", key: "waitingVerify", icon: Eye },
@@ -20,15 +22,23 @@ const CARDS = [
   { label: "AI วิเคราะห์แล้ว", key: "totalOcrAnalyzed", icon: ScanText, color: "#4D7C0F" },
 ] as const;
 
-/** Ported from KpiCombinedPage's summary card row, plus the OCR AI tile. */
+/** Palette slot per card, counting only cards without their own color, so adding one never recolors the others. */
+const PALETTE_SLOTS = CARDS.map((_, index) => CARDS.slice(0, index).filter((card) => !("color" in card)).length);
+
+/**
+ * Ported from KpiCombinedPage's summary card row, plus the OCR AI tile. A view
+ * that has no figure for a card leaves it out (undefined); the rest keep their
+ * usual colors.
+ */
 export function KpiSummaryCards(props: {
-  totalDocuments: number;
-  totalUploaded: number;
-  remainingDocuments: number;
-  waitingVerify: number;
-  requiredToRecordDocuments: number;
-  totalJournalsCombined: number;
-  totalOcrAnalyzed: number;
+  totalDocuments?: number;
+  totalDocumentSets?: number;
+  totalUploaded?: number;
+  remainingDocuments?: number;
+  waitingVerify?: number;
+  requiredToRecordDocuments?: number;
+  totalJournalsCombined?: number;
+  totalOcrAnalyzed?: number;
   ready: boolean;
 }) {
   return (
@@ -39,8 +49,10 @@ export function KpiSummaryCards(props: {
       aria-busy={!props.ready}
     >
       {CARDS.map((card, index) => {
+        const value = props[card.key];
+        if (value === undefined) return null;
         const base =
-          "color" in card ? card.color : categoricalPalette[index % categoricalPalette.length];
+          "color" in card ? card.color : categoricalPalette[PALETTE_SLOTS[index] % categoricalPalette.length];
 
         if (!props.ready) {
           const Icon = card.icon;
@@ -72,7 +84,7 @@ export function KpiSummaryCards(props: {
           <StatTile
             key={card.key}
             label={card.label}
-            value={props[card.key]}
+            value={value}
             icon={card.icon}
             // Categorical entries are single hexes; the tile needs the triple,
             // so the tint is derived from the same base color.

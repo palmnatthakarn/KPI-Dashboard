@@ -139,3 +139,9 @@ export interface KpiCombinedShopItem {
   shopId: string;
   shopName: string;
 }
+
+/** One uploaded image in a shop, whether or not anyone keyed it. */
+export interface KpiShopUpload {
+  shopName: string;
+  image: DocumentImage;
+}

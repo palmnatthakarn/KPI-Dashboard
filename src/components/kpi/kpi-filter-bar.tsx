@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import {
   addMonths,
@@ -111,6 +111,24 @@ export function KpiFilterBar({
   const [draftEndValid, setDraftEndValid] = useState(true);
   const startInputRef = useRef<HTMLInputElement>(null);
   const endInputRef = useRef<HTMLInputElement>(null);
+  const [draftUploadFromValid, setDraftUploadFromValid] = useState(true);
+  const [draftUploadToValid, setDraftUploadToValid] = useState(true);
+  const uploadFromInputRef = useRef<HTMLInputElement>(null);
+  const uploadToInputRef = useRef<HTMLInputElement>(null);
+  // Memoized so the pickers only see a new Date when the day actually changes.
+  const draftUploadFrom = useMemo(
+    () => (draftDocSearch.uploadFrom ? fromIsoDate(draftDocSearch.uploadFrom) : null),
+    [draftDocSearch.uploadFrom]
+  );
+  const draftUploadTo = useMemo(
+    () => (draftDocSearch.uploadTo ? fromIsoDate(draftDocSearch.uploadTo) : null),
+    [draftDocSearch.uploadTo]
+  );
+  // An upload-from date replaces the keyed-date range: data is fetched from
+  // that day to today, since a document is keyed only after it is uploaded.
+  const keyedRangeReplaced = draftUploadFrom !== null;
+  const draftValid =
+    (keyedRangeReplaced || (draftStartValid && draftEndValid)) && draftUploadFromValid && draftUploadToValid;
 
   useEffect(() => {
     setDraftShopIds(shopIds);
@@ -123,9 +141,10 @@ export function KpiFilterBar({
 
   const shopItems = shops.map((s) => ({ id: s.shopId, label: s.shopName }));
   function handleSearch() {
-    if (!draftStartValid || !draftEndValid) return;
+    if (!draftValid) return;
     const shopNames = shops.filter((s) => draftShopIds.includes(s.shopId)).map((s) => s.shopName);
-    onSearch({ shopIds: draftShopIds, shopNames, startDate: draftStart, endDate: draftEnd, employeeNames: draftEmployeeNames });
+    const range = draftUploadFrom ? { startDate: draftUploadFrom, endDate: new Date() } : { startDate: draftStart, endDate: draftEnd };
+    onSearch({ shopIds: draftShopIds, shopNames, ...range, employeeNames: draftEmployeeNames });
     onDocSearchChange(draftDocSearch);
   }
 
@@ -161,6 +180,7 @@ export function KpiFilterBar({
             onValidityChange={setDraftStartValid}
             inputRef={startInputRef}
             onAdvance={() => endInputRef.current?.focus()}
+            disabled={keyedRangeReplaced}
           />
         </div>
         <div className="min-w-0">
@@ -171,6 +191,7 @@ export function KpiFilterBar({
             onChange={setDraftEnd}
             onValidityChange={setDraftEndValid}
             inputRef={endInputRef}
+            disabled={keyedRangeReplaced}
           />
         </div>
 
@@ -200,7 +221,7 @@ export function KpiFilterBar({
           </button>
           <button
             type="button"
-            disabled={isSearching || !draftStartValid || !draftEndValid}
+            disabled={isSearching || !draftValid}
             onClick={handleSearch}
             className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 xl:flex-none"
           >
@@ -275,8 +296,39 @@ export function KpiFilterBar({
                 })}
               </div>
             </div>
+
+            <div className="min-w-0">
+              <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">อัปโหลดตั้งแต่</label>
+              <DatePickerField
+                value={draftUploadFrom}
+                max={draftUploadTo ?? undefined}
+                onChange={(date) => setDraftDocSearch({ ...draftDocSearch, uploadFrom: toIsoDate(date) })}
+                onClear={() => setDraftDocSearch({ ...draftDocSearch, uploadFrom: "" })}
+                onValidityChange={setDraftUploadFromValid}
+                inputRef={uploadFromInputRef}
+                onAdvance={() => uploadToInputRef.current?.focus()}
+                ariaLabel="อัปโหลดตั้งแต่"
+              />
+            </div>
+            <div className="min-w-0">
+              <label className="mb-1.5 block text-[11px] font-medium text-muted-foreground">อัปโหลดถึง</label>
+              <DatePickerField
+                value={draftUploadTo}
+                min={draftUploadFrom ?? undefined}
+                onChange={(date) => setDraftDocSearch({ ...draftDocSearch, uploadTo: toIsoDate(date) })}
+                onClear={() => setDraftDocSearch({ ...draftDocSearch, uploadTo: "" })}
+                onValidityChange={setDraftUploadToValid}
+                inputRef={uploadToInputRef}
+                ariaLabel="อัปโหลดถึง"
+              />
+            </div>
           </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground">กดปุ่ม &quot;ค้นหา&quot; หรือ Enter เพื่อใช้ตัวกรอง</p>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            กดปุ่ม &quot;ค้นหา&quot; หรือ Enter เพื่อใช้ตัวกรอง
+            {(draftUploadFrom || draftUploadTo) &&
+              " · ใส่วันที่อัปโหลดแล้ว: แสดงเฉพาะรูปที่อัปโหลดในช่วงนั้น ไม่สนการคีย์ (ไม่ใช้เลขที่เอกสาร/การผูกงาน)"}
+            {keyedRangeReplaced && " และไม่ใช้วันที่เริ่มต้น/สิ้นสุดด้านบน"}
+          </p>
         </div>
       )}
     </div>
@@ -294,34 +346,42 @@ const DOC_LINK_OPTIONS: { value: DocLinkFilter; label: string }[] = [
   { value: "unlinked", label: "ไม่ผูกงาน" },
 ];
 
+/** With `onClear`, the field is optional: `value` may be null and an emptied input clears it. */
 function DatePickerField({
   value,
   min,
   max,
   onChange,
+  onClear,
   onValidityChange,
   inputRef,
   onAdvance,
+  ariaLabel = "กรอกวันที่",
+  disabled = false,
 }: {
-  value: Date;
+  value: Date | null;
   min?: Date;
   max?: Date;
   onChange: (date: Date) => void;
+  onClear?: () => void;
   onValidityChange: (valid: boolean) => void;
   inputRef: RefObject<HTMLInputElement>;
   onAdvance?: () => void;
+  ariaLabel?: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [viewMonth, setViewMonth] = useState(value);
-  const [inputValue, setInputValue] = useState(() => formatDisplayDate(value));
+  const [viewMonth, setViewMonth] = useState(() => value ?? new Date());
+  const [inputValue, setInputValue] = useState(() => (value ? formatDisplayDate(value) : ""));
   const [inputInvalid, setInputInvalid] = useState(false);
+  const fallbackYear = (value ?? new Date()).getFullYear();
 
   useEffect(() => {
-    if (open) setViewMonth(value);
+    if (open) setViewMonth(value ?? new Date());
   }, [open, value]);
 
   useEffect(() => {
-    setInputValue(formatDisplayDate(value));
+    setInputValue(value ? formatDisplayDate(value) : "");
     setInputInvalid(false);
     onValidityChange(true);
   }, [onValidityChange, value]);
@@ -341,7 +401,13 @@ function DatePickerField({
   }
 
   function applyTypedDate(): boolean {
-    const date = parseDisplayDate(inputValue, value.getFullYear());
+    if (onClear && inputValue.trim() === "") {
+      setInputInvalid(false);
+      onValidityChange(true);
+      if (value) onClear();
+      return true;
+    }
+    const date = parseDisplayDate(inputValue, fallbackYear);
     if (!date || isDisabled(date)) {
       setInputInvalid(true);
       onValidityChange(false);
@@ -360,11 +426,12 @@ function DatePickerField({
         className={cn(
           "flex h-10 w-full min-w-[128px] items-center gap-2 rounded-lg border bg-secondary px-3 text-[12px] font-medium transition-colors",
           inputInvalid ? "border-destructive" : "border-transparent",
-          open && !inputInvalid && "border-brand-blue/40"
+          open && !inputInvalid && "border-brand-blue/40",
+          disabled && "cursor-not-allowed opacity-50"
         )}
       >
         <Popover.Trigger asChild>
-          <button type="button" aria-label="เปิดปฏิทิน" className="rounded p-0.5 hover:bg-accent">
+          <button type="button" disabled={disabled} aria-label="เปิดปฏิทิน" className="rounded p-0.5 hover:bg-accent disabled:pointer-events-none">
             <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </Popover.Trigger>
@@ -373,8 +440,8 @@ function DatePickerField({
           value={inputValue}
           onChange={(event) => {
             const nextValue = event.target.value;
-            const parsed = parseDisplayDate(nextValue, value.getFullYear());
-            const valid = Boolean(parsed && !isDisabled(parsed));
+            const parsed = parseDisplayDate(nextValue, fallbackYear);
+            const valid = (Boolean(onClear) && nextValue.trim() === "") || Boolean(parsed && !isDisabled(parsed));
             setInputValue(nextValue);
             setInputInvalid(!valid);
             onValidityChange(valid);
@@ -387,10 +454,21 @@ function DatePickerField({
             }
           }}
           inputMode="numeric"
-          aria-label="กรอกวันที่"
+          aria-label={ariaLabel}
+          disabled={disabled}
           placeholder="DD/MM/YYYY"
           className="min-w-0 flex-1 bg-transparent tabular-nums outline-none placeholder:text-muted-foreground"
         />
+        {onClear && value && (
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={`ล้าง${ariaLabel}`}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       <Popover.Portal>
@@ -430,7 +508,7 @@ function DatePickerField({
 
             {days.map((day) => {
               const inCurrentMonth = isSameMonth(day, viewMonth);
-              const selected = isSameDay(day, value);
+              const selected = value !== null && isSameDay(day, value);
               const disabled = !inCurrentMonth || isDisabled(day);
 
               return (
@@ -454,7 +532,7 @@ function DatePickerField({
           </div>
 
           <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-            <span className="text-[11px] text-muted-foreground">{formatDisplayDate(value)}</span>
+            <span className="text-[11px] text-muted-foreground">{value ? formatDisplayDate(value) : "-"}</span>
             <button
               type="button"
               onClick={() => {

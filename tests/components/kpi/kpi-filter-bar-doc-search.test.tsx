@@ -35,7 +35,7 @@ describe("KpiFilterBar advanced document search", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^ค้นหา$/ }));
     expect(onSearch).toHaveBeenCalledTimes(1);
-    expect(onDocSearchChange).toHaveBeenCalledWith({ docNo: "0377", link: "unlinked" });
+    expect(onDocSearchChange).toHaveBeenCalledWith({ ...EMPTY_DOC_SEARCH, docNo: "0377", link: "unlinked" });
   });
 
   it("applies the draft when Enter is pressed in the document number field", () => {
@@ -44,6 +44,42 @@ describe("KpiFilterBar advanced document search", () => {
 
     fireEvent.change(input, { target: { value: "TR-6909" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(onDocSearchChange).toHaveBeenCalledWith({ docNo: "TR-6909", link: "all" });
+    expect(onDocSearchChange).toHaveBeenCalledWith({ ...EMPTY_DOC_SEARCH, docNo: "TR-6909" });
+  });
+
+  it("applies a typed upload-date range and allows clearing one side", () => {
+    const { onDocSearchChange } = renderBar();
+    const from = screen.getByRole("textbox", { name: "อัปโหลดตั้งแต่" });
+    const to = screen.getByRole("textbox", { name: "อัปโหลดถึง" });
+
+    fireEvent.change(from, { target: { value: "01/10/2026" } });
+    fireEvent.blur(from);
+    fireEvent.change(to, { target: { value: "05/10/2026" } });
+    fireEvent.blur(to);
+    fireEvent.click(screen.getByRole("button", { name: /^ค้นหา$/ }));
+    expect(onDocSearchChange).toHaveBeenLastCalledWith({ ...EMPTY_DOC_SEARCH, uploadFrom: "2026-10-01", uploadTo: "2026-10-05" });
+
+    fireEvent.click(screen.getByRole("button", { name: "ล้างอัปโหลดตั้งแต่" }));
+    fireEvent.click(screen.getByRole("button", { name: /^ค้นหา$/ }));
+    expect(onDocSearchChange).toHaveBeenLastCalledWith({ ...EMPTY_DOC_SEARCH, uploadTo: "2026-10-05" });
+  });
+
+  it("blocks the search while an upload date is invalid", () => {
+    renderBar();
+    fireEvent.change(screen.getByRole("textbox", { name: "อัปโหลดถึง" }), { target: { value: "99/99/2026" } });
+    expect(screen.getByRole("button", { name: /^ค้นหา$/ })).toBeDisabled();
+  });
+
+  it("searches from the upload-from day to today instead of the keyed-date range", () => {
+    const { onSearch } = renderBar();
+    const from = screen.getByRole("textbox", { name: "อัปโหลดตั้งแต่" });
+    fireEvent.change(from, { target: { value: "01/10/2026" } });
+    fireEvent.blur(from);
+
+    expect(screen.getAllByRole("textbox", { name: "กรอกวันที่" }).every((input) => (input as HTMLInputElement).disabled)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /^ค้นหา$/ }));
+    const { startDate, endDate } = onSearch.mock.calls[0][0];
+    expect(startDate).toEqual(new Date(2026, 9, 1));
+    expect(endDate.toDateString()).toBe(new Date().toDateString());
   });
 });

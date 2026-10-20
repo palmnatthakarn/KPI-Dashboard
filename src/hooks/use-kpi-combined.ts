@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchKpiCombinedData, getCurrentMonthRange, listKpiShops } from "@/lib/kpi/kpi-combined-service";
 import { useKnownEmployees } from "@/lib/employee/employee-mapping-service";
-import type { KpiCombinedEmployee, KpiCombinedShopItem } from "@/types/kpi-combined";
+import type { KpiCombinedEmployee, KpiCombinedShopItem, KpiShopUpload } from "@/types/kpi-combined";
 
 /**
  * Ported from KpiCombinedBloc's state shape (kpi_combined_state.dart) — the
@@ -63,6 +63,7 @@ export function useKpiCombined() {
     () => dataQuery.data?.employees ?? [],
     [dataQuery.data?.employees]
   );
+  const uploads: KpiShopUpload[] = useMemo(() => dataQuery.data?.uploads ?? [], [dataQuery.data?.uploads]);
   const employeeNames = useMemo(() => {
     const names = new Set([...knownEmployeeNames, ...employees.map((employee) => employee.name)]);
     return Array.from(names).filter(Boolean).sort((a, b) => a.localeCompare(b));
@@ -127,6 +128,7 @@ export function useKpiCombined() {
     employees,
     employeeNames,
     filteredEmployees,
+    uploads,
     summary,
     isLoading: dataQuery.isLoading,
     isFetching: dataQuery.isFetching && !dataQuery.isLoading,

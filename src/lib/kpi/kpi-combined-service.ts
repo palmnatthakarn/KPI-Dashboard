@@ -10,7 +10,8 @@ import {
 } from "@/lib/api/document-image-service";
 import { saveKnownEmployees } from "@/lib/employee/employee-mapping-service";
 import { reconcileKpiEmployees, type ShopFetchResult } from "@/lib/kpi/kpi-reconcile";
-import type { KpiCombinedEmployee, KpiCombinedShopItem } from "@/types/kpi-combined";
+import type { KpiCombinedEmployee, KpiCombinedShopItem, KpiShopUpload } from "@/types/kpi-combined";
+import type { DocumentImage } from "@/types/document-image";
 
 /**
  * Ported from KpiCombinedBloc's fetch orchestration (kpi_combined_bloc.dart).
@@ -210,13 +211,57 @@ async function fetchShopData(shopId: string, shopName: string, startDate: Date, 
 interface CacheEntry {
   employees: KpiCombinedEmployee[];
   activeDocumentTotal: number;
+  uploads: KpiShopUpload[];
   expiresAt: number;
 }
 
 interface FetchOutcome {
   employees: KpiCombinedEmployee[];
   activeDocumentTotal: number;
+  uploads: KpiShopUpload[];
   incompleteShops: string[];
+}
+
+/**
+ * Every uploaded image the fetch saw in each shop — task document sets plus
+ * sets referenced by GL journals — once each, keyed or not. Each image says
+ * where it sits: `taskName` (null when it came in without a task) and
+ * `groupDocNo` (the keyed document number, when there is one).
+ */
+export function collectShopUploads(shopResults: ShopFetchResult[]): KpiShopUpload[] {
+  const norm = (value: string | null | undefined) => (value ?? "").trim().toLowerCase();
+  const uploads: KpiShopUpload[] = [];
+  for (const shop of shopResults) {
+    const taskNames = new Map<string, string>();
+    for (const task of shop.tasks) {
+      if (task.taskChild?.guidfixed) taskNames.set(norm(task.taskChild.guidfixed), task.name);
+      taskNames.set(norm(task.guidfixed), task.name);
+    }
+    const docNoByRef = new Map<string, string>();
+    for (const journal of shop.journals) {
+      if (journal.documentref && journal.docno) docNoByRef.set(norm(journal.documentref), journal.docno);
+    }
+
+    const seen = new Set<string>();
+    const add = (image: DocumentImage, taskName: string | null, fallbackDocNo: string | null) => {
+      const key =
+        image.imageId ?? image.imageUrl ?? `${image.uploadedBy ?? ""}|${image.uploadedAt ?? ""}|${image.description ?? ""}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      uploads.push({
+        shopName: shop.shopName,
+        image: { ...image, taskName, groupDocNo: image.groupDocNo || fallbackDocNo },
+      });
+    };
+    // Task images first, so an image reachable both ways keeps its task.
+    for (const [taskGuid, images] of shop.taskUploadedImages) {
+      for (const image of images) add(image, taskNames.get(norm(taskGuid)) ?? null, null);
+    }
+    for (const [ref, images] of shop.documentRefUploadedImages) {
+      for (const image of images) add(image, null, docNoByRef.get(norm(ref)) ?? null);
+    }
+  }
+  return uploads;
 }
 
 const CACHE_TTL_MS = 2 * 60 * 1000;
@@ -270,6 +315,7 @@ export interface FetchKpiCombinedParams {
 export interface FetchKpiCombinedResult {
   employees: KpiCombinedEmployee[];
   activeDocumentTotal: number;
+  uploads: KpiShopUpload[];
   shops: KpiCombinedShopItem[];
   /** Shop names whose fetch didn't complete fully (task fetch failed or GL journal pagination gave up). */
   incompleteShops: string[];
@@ -293,6 +339,7 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
       return {
         employees: cached.employees,
         activeDocumentTotal: cached.activeDocumentTotal,
+        uploads: cached.uploads,
         shops: allShops,
         incompleteShops: [],
       };
@@ -303,6 +350,7 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
       return {
         employees: outcome.employees,
         activeDocumentTotal: outcome.activeDocumentTotal,
+        uploads: outcome.uploads,
         shops: allShops,
         incompleteShops: outcome.incompleteShops,
       };
@@ -328,13 +376,14 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
     }
 
     const employees = reconcileKpiEmployees(shopResults, startDate, endDate);
+    const uploads = collectShopUploads(shopResults);
     const activeDocumentTotal = shopResults.reduce(
       (total, shop) => total + shop.activeDocumentCount,
       0
     );
 
     if (incompleteShops.length === 0) {
-      cache.set(key, { employees, activeDocumentTotal, expiresAt: Date.now() + CACHE_TTL_MS });
+      cache.set(key, { employees, activeDocumentTotal, uploads, expiresAt: Date.now() + CACHE_TTL_MS });
     }
 
     const knownKeyers = Array.from(
@@ -349,7 +398,7 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
       console.error("Unable to save known employees", error)
     );
 
-    return { employees, activeDocumentTotal, incompleteShops };
+    return { employees, activeDocumentTotal, uploads, incompleteShops };
   });
 
   inFlight.set(key, promise);
@@ -358,6 +407,7 @@ export async function fetchKpiCombinedData(params: FetchKpiCombinedParams): Prom
     return {
       employees: outcome.employees,
       activeDocumentTotal: outcome.activeDocumentTotal,
+      uploads: outcome.uploads,
       shops: allShops,
       incompleteShops: outcome.incompleteShops,
     };

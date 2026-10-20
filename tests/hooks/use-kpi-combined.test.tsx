@@ -67,6 +67,7 @@ describe("useKpiCombined", () => {
     mockedFetchKpiCombinedData.mockResolvedValue({
       employees: [makeEmployee("Alice"), makeEmployee("Zoe")],
       activeDocumentTotal: 0,
+      uploads: [],
       shops: [],
       incompleteShops: [],
     });
@@ -90,6 +91,7 @@ describe("useKpiCombined", () => {
     mockedFetchKpiCombinedData.mockResolvedValue({
       employees: [makeEmployee("Alice"), makeEmployee("Bob")],
       activeDocumentTotal: 0,
+      uploads: [],
       shops: [],
       incompleteShops: [],
     });
@@ -145,6 +147,7 @@ describe("useKpiCombined", () => {
     mockedFetchKpiCombinedData.mockResolvedValueOnce({
       employees: firstBatch,
       activeDocumentTotal: 0,
+      uploads: [],
       shops: [],
       incompleteShops: [],
     });
@@ -183,6 +186,7 @@ describe("useKpiCombined", () => {
       resolveSecond({
         employees: secondBatch,
         activeDocumentTotal: 0,
+      uploads: [],
         shops: [],
         incompleteShops: [],
       });

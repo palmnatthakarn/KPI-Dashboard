@@ -17,6 +17,8 @@ export interface DocumentImage {
   groupTitle?: string | null;
   groupOrder?: number | null;
   groupDocNo?: string | null;
+  /** Task the image belongs to; null = came in without a task; undefined = not resolved (outside the KPI upload view). */
+  taskName?: string | null;
 }
 
 export function getDocumentImageGroupKey(

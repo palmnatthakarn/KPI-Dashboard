@@ -63,6 +63,7 @@ function mockHook(overrides: Partial<ReturnType<typeof useKpiCombined>> = {}) {
     employees: [],
     employeeNames: [],
     filteredEmployees: [],
+    uploads: [],
     summary: ZERO_SUMMARY,
     isLoading: false,
     isFetching: false,

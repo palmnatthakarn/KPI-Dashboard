@@ -1,4 +1,5 @@
-import type { KpiCombinedEmployee, KpiCombinedJournalItem, KpiCombinedTaskItem } from "@/types/kpi-combined";
+import type { KpiCombinedEmployee, KpiCombinedJournalItem, KpiCombinedTaskItem, KpiShopUpload } from "@/types/kpi-combined";
+import type { DocumentImage } from "@/types/document-image";
 
 /** "linked" = journals under a task; "unlinked" = journals not tied to any task. */
 export type DocLinkFilter = "all" | "linked" | "unlinked";
@@ -6,17 +7,38 @@ export type DocLinkFilter = "all" | "linked" | "unlinked";
 export interface DocSearch {
   docNo: string;
   link: DocLinkFilter;
+  /** Upload-date range as local YYYY-MM-DD days, both inclusive; "" leaves that side open. */
+  uploadFrom: string;
+  uploadTo: string;
 }
 
-export const EMPTY_DOC_SEARCH: DocSearch = { docNo: "", link: "all" };
+export const EMPTY_DOC_SEARCH: DocSearch = { docNo: "", link: "all", uploadFrom: "", uploadTo: "" };
 
 /** Trims/lowercases the document number so matching is partial and case-insensitive. */
 export function normalizeDocSearch(search: DocSearch): DocSearch {
-  return { docNo: search.docNo.trim().toLowerCase(), link: search.link };
+  return { ...search, docNo: search.docNo.trim().toLowerCase() };
+}
+
+/** An upload range switches the KPI page to the upload view (see groupUploadsByUploader). */
+export function hasUploadRange(search: DocSearch): boolean {
+  return Boolean(search.uploadFrom || search.uploadTo);
 }
 
 export function isDocSearchActive(search: DocSearch): boolean {
-  return search.docNo.trim() !== "" || search.link !== "all";
+  return search.docNo.trim() !== "" || search.link !== "all" || hasUploadRange(search);
+}
+
+function isoDay(value: string, endOfDay: boolean): number {
+  const [y, m, d] = value.split("-").map(Number);
+  return endOfDay ? new Date(y, m - 1, d, 23, 59, 59, 999).getTime() : new Date(y, m - 1, d).getTime();
+}
+
+/** True when there is no upload range, or `date` falls inside it. An unknown upload time never matches a range. */
+export function uploadedInRange(date: Date | string | null | undefined, search: DocSearch): boolean {
+  if (!hasUploadRange(search)) return true;
+  const time = date ? new Date(date).getTime() : NaN;
+  if (!Number.isFinite(time)) return false;
+  return (!search.uploadFrom || time >= isoDay(search.uploadFrom, false)) && (!search.uploadTo || time <= isoDay(search.uploadTo, true));
 }
 
 /** Expects a normalized search. An empty document number matches every journal. */
@@ -94,6 +116,11 @@ export function collectMatchedJournals(employee: KpiCombinedEmployee, search: Do
   return matched;
 }
 
+function displayDay(value: string): string {
+  const [y, m, d] = value.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 /** Human-readable summary of an active search, e.g. `เลขที่เอกสาร "0377" · ไม่ผูกงาน`. */
 export function describeDocSearch(search: DocSearch): string {
   const parts: string[] = [];
@@ -101,5 +128,48 @@ export function describeDocSearch(search: DocSearch): string {
   if (docNo) parts.push(`เลขที่เอกสาร "${docNo}"`);
   if (search.link === "linked") parts.push("ผูกงาน");
   if (search.link === "unlinked") parts.push("ไม่ผูกงาน");
+  if (search.uploadFrom && search.uploadTo) parts.push(`อัปโหลด ${displayDay(search.uploadFrom)} – ${displayDay(search.uploadTo)}`);
+  else if (search.uploadFrom) parts.push(`อัปโหลดตั้งแต่ ${displayDay(search.uploadFrom)}`);
+  else if (search.uploadTo) parts.push(`อัปโหลดถึง ${displayDay(search.uploadTo)}`);
   return parts.join(" · ");
+}
+
+export interface UploaderShopUploads {
+  shopName: string;
+  images: DocumentImage[];
+}
+
+export interface UploaderUploads {
+  uploader: string;
+  imageCount: number;
+  shops: UploaderShopUploads[];
+}
+
+/**
+ * The upload view: every image uploaded inside the search's upload range,
+ * grouped by who uploaded it, then by shop — regardless of whether anyone
+ * keyed it. Sorted by image count, most first.
+ */
+export function groupUploadsByUploader(
+  uploads: KpiShopUpload[],
+  search: DocSearch,
+  employeeNames: string[] = []
+): UploaderUploads[] {
+  const onlyEmployees = new Set(employeeNames);
+  const byUploader = new Map<string, Map<string, DocumentImage[]>>();
+  for (const { shopName, image } of uploads) {
+    const uploader = (image.uploadedBy ?? "").trim();
+    if (!uploader || !uploadedInRange(image.uploadedAt, search)) continue;
+    if (onlyEmployees.size > 0 && !onlyEmployees.has(uploader)) continue;
+    const byShop = byUploader.get(uploader) ?? new Map<string, DocumentImage[]>();
+    byUploader.set(uploader, byShop);
+    byShop.set(shopName, [...(byShop.get(shopName) ?? []), image]);
+  }
+
+  return [...byUploader].map(([uploader, byShop]) => {
+    const shops = [...byShop]
+      .map(([shopName, images]) => ({ shopName, images }))
+      .sort((a, b) => b.images.length - a.images.length);
+    return { uploader, imageCount: shops.reduce((sum, shop) => sum + shop.images.length, 0), shops };
+  }).sort((a, b) => b.imageCount - a.imageCount);
 }
