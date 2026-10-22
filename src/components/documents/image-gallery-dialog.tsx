@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import {
   countDocumentImageGroups,
+  describeImageLocation,
   getDocumentImageGroupKey,
   type DocumentImage,
 } from "@/types/document-image";
@@ -41,18 +42,6 @@ interface DocumentImageGroup {
   title: string;
   images: DocumentImage[];
   order: number;
-}
-
-/**
- * Where an image sits, when the caller resolved it (KPI upload view): its task
- * and keyed document number, "ยังไม่คีย์" for a task image nobody keyed, and
- * the document number alone for an image added without a task.
- */
-function imageLocation(image: DocumentImage): string | null {
-  if (image.taskName === undefined) return null;
-  const docNo = image.groupDocNo ? `เลขที่ ${image.groupDocNo}` : null;
-  if (image.taskName) return `งาน ${image.taskName} · ${docNo ?? "ยังไม่คีย์"}`;
-  return docNo ? `ไม่ผ่านงาน · ${docNo}` : "ไม่ผ่านงาน";
 }
 
 /** Case-insensitive match of the search text against a set's name, document number, file names and task. */
@@ -306,9 +295,9 @@ function ImageGroupCard({ group, onClick }: { group: DocumentImageGroup; onClick
       </div>
       <div className="p-2">
         <p className="truncate text-[11px] font-medium">{group.title}</p>
-        {imageLocation(image) && (
+        {describeImageLocation(image) && (
           <p className="break-words text-[10px] font-medium leading-snug text-info-strong">
-            {imageLocation(image)}
+            {describeImageLocation(image)}
           </p>
         )}
         {image.uploadedBy && <p className="truncate text-[10px] text-muted-foreground">โดย {image.uploadedBy}</p>}
@@ -378,7 +367,7 @@ function ImageDetailDialog({
   if (!group) return null;
   const stacked = group.images.length > 1;
   const first = group.images[0];
-  const location = imageLocation(first);
+  const location = describeImageLocation(first);
   const footer = [stacked ? "" : uploadCaption(first), location].filter(Boolean).join(" · ");
 
   return (

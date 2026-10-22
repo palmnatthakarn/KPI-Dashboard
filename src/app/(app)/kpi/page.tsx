@@ -79,6 +79,27 @@ export default function KpiPage() {
   const employeeItems = allEmployeeNames.map((name) => ({ id: name, label: getDisplayName(name) }));
   const hasCachedKpiData = employees.length > 0;
 
+  async function handleUploadExport() {
+    if (isExporting || uploaders.length === 0) return;
+    setIsExporting(true);
+    setToast("กำลังสร้างไฟล์ PDF...");
+    try {
+      const { exportKpiUploadPdf } = await import("@/lib/kpi/kpi-upload-pdf-export");
+      await exportKpiUploadPdf({
+        uploaders,
+        rangeLabel: `รูปที่${describeDocSearch({ ...EMPTY_DOC_SEARCH, uploadFrom: docSearch.uploadFrom, uploadTo: docSearch.uploadTo })}`,
+        userName: username ?? "ผู้ใช้งาน",
+      });
+      setToast("ส่งออก PDF สำเร็จ");
+    } catch (exportError) {
+      console.error("Unable to export upload PDF", exportError);
+      setToast("สร้าง PDF ไม่สำเร็จ");
+    } finally {
+      setIsExporting(false);
+      setTimeout(() => setToast(null), 2500);
+    }
+  }
+
   async function handleExport() {
     if (isExporting || !hasSearched || tableEmployees.length === 0) return;
     setIsExporting(true);
@@ -235,7 +256,13 @@ export default function KpiPage() {
                   description="ในร้านและพนักงานที่เลือก"
                 />
               ) : (
-                <KpiUploadTable uploaders={uploaders} fontScale={fontScale} />
+                <KpiUploadTable
+                  uploaders={uploaders}
+                  fontScale={fontScale}
+                  onExport={handleUploadExport}
+                  canExport={!isExporting && !isError && uploaders.length > 0}
+                  isExporting={isExporting}
+                />
               )
             ) : isDocSearchActive(docSearch) && tableEmployees.length === 0 ? (
               <EmptyState

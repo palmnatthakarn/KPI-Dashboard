@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Images, Store } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, Images, Loader2, Store } from "lucide-react";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { Pagination } from "@/components/common/pagination";
 import { ImageGalleryDialog } from "@/components/documents/image-gallery-dialog";
@@ -71,7 +71,20 @@ function ViewImagesButton({ onClick }: { onClick: () => void }) {
 }
 
 /** The KPI page's upload view: images uploaded in the selected upload range, by uploader and shop. */
-export function KpiUploadTable({ uploaders, fontScale }: { uploaders: UploaderUploads[]; fontScale: number }) {
+export function KpiUploadTable({
+  uploaders,
+  fontScale,
+  onExport,
+  canExport = false,
+  isExporting = false,
+}: {
+  uploaders: UploaderUploads[];
+  fontScale: number;
+  /** Shows the "ดาวน์โหลด PDF" button in the header when provided (as in KpiTable). */
+  onExport?: () => void;
+  canExport?: boolean;
+  isExporting?: boolean;
+}) {
   useEmployeeMappings();
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [gallery, setGallery] = useState<{ title: string; images: DocumentImage[] } | null>(null);
@@ -102,6 +115,18 @@ export function KpiUploadTable({ uploaders, fontScale }: { uploaders: UploaderUp
         <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-info-strong">
           ทั้งหมด {uploaders.length.toLocaleString("th-TH")} คน
         </span>
+        {onExport && (
+          <button
+            type="button"
+            onClick={onExport}
+            disabled={!canExport}
+            title="ดาวน์โหลด PDF"
+            aria-label="ดาวน์โหลด PDF"
+            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          </button>
+        )}
       </div>
 
       {/* Mobile */}

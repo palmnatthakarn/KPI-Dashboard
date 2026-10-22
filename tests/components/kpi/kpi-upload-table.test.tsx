@@ -35,4 +35,12 @@ describe("KpiUploadTable", () => {
     expect(screen.getAllByText("ร้าน A").length).toBeGreaterThan(0);
     expect(screen.getAllByText("ร้าน B").length).toBeGreaterThan(0);
   });
+
+  it("offers a PDF download when an export handler is given", () => {
+    const onExport = vi.fn();
+    render(<KpiUploadTable uploaders={uploaders} fontScale={1} onExport={onExport} canExport />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ดาวน์โหลด PDF" }));
+    expect(onExport).toHaveBeenCalledTimes(1);
+  });
 });

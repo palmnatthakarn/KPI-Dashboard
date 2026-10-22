@@ -23,7 +23,8 @@ import type { KpiCombinedEmployee } from "@/types/kpi-combined";
 
 let fontsRegistered = false;
 
-function registerFonts() {
+/** Registers the Thai font every KPI PDF uses (once per page load). */
+export function registerFonts() {
   if (fontsRegistered) return;
   const origin = window.location.origin;
   Font.register({
@@ -298,11 +299,16 @@ export async function exportKpiPdf(options: {
     durationMs: Math.round(performance.now() - startedAt),
     bytes: blob.size,
   });
+  downloadPdf(blob, "KPI");
+}
+
+/** Saves a generated PDF as `<prefix>_<YYYY-MM-DD>.pdf`. */
+export function downloadPdf(blob: Blob, prefix: string) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   const stamp = new Date().toISOString().slice(0, 10);
   anchor.href = url;
-  anchor.download = `KPI_${stamp}.pdf`;
+  anchor.download = `${prefix}_${stamp}.pdf`;
   anchor.style.display = "none";
   document.body.appendChild(anchor);
   anchor.click();

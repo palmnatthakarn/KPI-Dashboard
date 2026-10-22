@@ -31,6 +31,19 @@ export function getDocumentImageGroupKey(
   );
 }
 
+/**
+ * Where an image sits, when the caller resolved it (`taskName` set, as in the
+ * KPI upload view): its task and keyed document number, "ยังไม่คีย์" for a
+ * task image nobody keyed, and the document number alone for an image added
+ * without a task. null when the location was not resolved.
+ */
+export function describeImageLocation(image: DocumentImage): string | null {
+  if (image.taskName === undefined) return null;
+  const docNo = image.groupDocNo ? `เลขที่ ${image.groupDocNo}` : null;
+  if (image.taskName) return `งาน ${image.taskName} · ${docNo ?? "ยังไม่คีย์"}`;
+  return docNo ? `ไม่ผ่านงาน · ${docNo}` : "ไม่ผ่านงาน";
+}
+
 export function countDocumentImageGroups(images: DocumentImage[]): number {
   const groups = new Set<string>();
   images.forEach((image, index) => {
